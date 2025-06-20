@@ -36,7 +36,7 @@ const consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {}
 import { jest } from '@jest/globals';
 
 // console.warn('Loading ../src/module.ts');
-const { main } = await import('../src/module.ts');
+const { main } = await import('./module.ts');
 
 describe('mb-service main', () => {
   const servicePath = `/etc/systemd/system/matterbridge.service`;

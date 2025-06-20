@@ -76,7 +76,7 @@
     "npmPublishTagLatest": "npx shx cp package.json package.json.backup && npm run prepublishOnly && npm publish --tag latest && npx shx cp package.json.backup package.json && npx shx rm -rf package.json.backup && npm run reset",
     "install:typescript": "npm install --save-dev typescript @types/node @types/jest npm-check-updates rimraf shx",
     "install:eslint": "npm install --save-dev @eslint/js typescript-eslint eslint-plugin-import eslint-plugin-n eslint-plugin-promise eslint-plugin-jsdoc",
-    "install:jest": "npm install --save-dev jest @jest/globals ts-jest eslint-plugin-jest",
+    "install:jest": "npm install --save-dev jest@29.7.0 @jest/globals eslint-plugin-jest",
     "install:prettier": "npm install --save-dev prettier eslint-config-prettier eslint-plugin-prettier"
   },
   "devDependencies": {
