@@ -114,7 +114,7 @@ export function main() {
  */
 function printHelp() {
   console.log(
-    `Usage: mb-service [start|stop|restart|logs|status|update-node]\n\n` +
+    `Usage: mb-service [start|stop|restart|logs|status]\n\n` +
       `  Please provide a command:\n` +
       `    start                            start the matterbridge service\n` +
       `    stop                             stop the matterbridge service\n` +
@@ -125,10 +125,10 @@ function printHelp() {
       `    uninstall <plugin>@<version>     uninstall a plugin\n` +
       `    add <plugin>                     add a plugin to matterbridge\n` +
       `    remove <plugin>                  remove a plugin from matterbridge\n` +
-      `    link                             adds the current directory to Matterbridge for plugin development\n` +
+      `    link                             adds the current directory to matterbridge for plugin development\n` +
       `    unlink                           reverses the link operation for the current directory\n` +
       `    logs                             tails the matterbridge service logs\n` +
-      `    status                           check if the Matterbridge is running\n`,
+      `    status                           check if matterbridge is running\n`,
   );
 }
 
