@@ -18,28 +18,19 @@ jobs:
           node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Clean cache
-        run: npm cache clean --force
-
-      - name: Verify Node.js version
-        run: node -v
-
-      - name: Verify Npm version
-        run: npm -v
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint the plugin
+      - name: Lint the project
         run: npm run lint
 
-      - name: Test the plugin
+      - name: Test the project
         run: npm run test
 
-      - name: Build the plugin
+      - name: Build the project
         run: npm run build
 
-      - name: Publish the plugin to npm
+      - name: Publish to npm
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

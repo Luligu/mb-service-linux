@@ -1,6 +1,6 @@
 // .devcontainer/devcontainer.json
-// This file defines the development container configuration for a Matterbridge project.
-// WARNING: since the dev container doesn't have network host and ipv6, you can run matterbridge inside the container and test the plugin but is not possible to pair the Matterbridge instance.
+
+// This file defines the development container configuration for a Matterbridge generic project (not a plugin).
 {
   // Name of the dev container
   "name": "Matterbridge",

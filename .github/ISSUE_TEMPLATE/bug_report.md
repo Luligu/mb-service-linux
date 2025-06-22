@@ -25,17 +25,10 @@ Please always add screenshots to help explain your problem. Possibly taken from 
 
 **Debug file**
 Please always add the debug file to help explain your problem.
-[How to download the log](https://github.com/Luligu/matterbridge/blob/main/README.md#how-to-send-the-debug-log-files)
 
-**Plugin (please complete the following information):**
-
-- Version [e.g. 0.0.2]
-
-**Matterbridge (please complete the following information):**
-
-- Mode [e.g. as a service or docker container]
-- Version [e.g. 1.6.6]
-- OS: [e.g. where you run Matterbridge]
+**Package (please complete the following information):**
+Version [e.g. 0.0.2]
+OS: [e.g. where you run the package]
 
 **Additional context**
 Add any other context about the problem here.

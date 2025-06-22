@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/mb-service-linux.svg)](https://www.npmjs.com/package/mb-service-linux)
 [![npm downloads](https://img.shields.io/npm/dt/mb-service-linux.svg)](https://www.npmjs.com/package/mb-service-linux)
-![Node.js CI](https://github.com/Luligu/mb-service-linux/actions/workflows/build-lint-test.yml/badge.svg)
+![Node.js CI](https://github.com/Luligu/mb-service-linux/actions/workflows/build.yml/badge.svg)
 ![Coverage](https://img.shields.io/badge/Jest%20coverage-100%25-brightgreen)
 
 ---
