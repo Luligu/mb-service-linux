@@ -3,7 +3,8 @@
 [![npm version](https://img.shields.io/npm/v/mb-service-linux.svg)](https://www.npmjs.com/package/mb-service-linux)
 [![npm downloads](https://img.shields.io/npm/dt/mb-service-linux.svg)](https://www.npmjs.com/package/mb-service-linux)
 ![Node.js CI](https://github.com/Luligu/mb-service-linux/actions/workflows/build.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/Jest%20coverage-100%25-brightgreen)
+![CodeQL](https://github.com/Luligu/mb-service-linux/actions/workflows/codeql.yml/badge.svg)
+[![codecov](https://codecov.io/gh/Luligu/mb-service-linux/branch/main/graph/badge.svg)](https://codecov.io/gh/Luligu/mb-service-linux)
 
 ---
 
@@ -45,13 +46,7 @@ If you like this project and find it useful, please consider giving it a star on
 
 Follow these steps to install or update Matterbridge if it is not already installed and up to date:
 
-```
-npm install -g matterbridge --omit=dev
-```
-
-on Linux od macOS you may need the necessary permissions:
-
-```
+```bash
 sudo npm install -g matterbridge --omit=dev
 ```
 
@@ -59,20 +54,12 @@ See the complete guidelines on [Matterbridge](https://github.com/Luligu/matterbr
 
 ## How to install the Matterbridge service cli
 
-On windows:
-
-```
-npm install -g mb-service-linux --omit=dev
-```
-
-On linux or macOS you may need the necessary permissions:
-
-```
+```bash
 sudo npm install -g mb-service-linux --omit=dev
 ```
 
 Then start it from a terminal
 
-```
-mb-service
+```bash
+sudo mb-service
 ```
