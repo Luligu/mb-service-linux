@@ -3,7 +3,7 @@
  * @file module.ts
  * @author Luca Liguori
  * @created 2024-07-14
- * @version 1.1.2
+ * @version 1.1.3
  * @license Apache-2.0
  *
  * Copyright 2024, 2025, 2026 Luca Liguori.
@@ -160,7 +160,22 @@ function printHelp() {
  */
 function createServiceConfig() {
   const user = process.env.SUDO_USER || process.env.USER;
-  const config = `[Unit]\nDescription=matterbridge\nAfter=network-online.target\n\n[Service]\nType=simple\nExecStart=matterbridge -service\nWorkingDirectory=~\nStandardOutput=inherit\nStandardError=inherit\nRestart=always\nUser=${user}\nGroup=${user}\n\n[Install]\nWantedBy=multi-user.target\n`;
+  const config =
+    `[Unit]\n` +
+    `Description=matterbridge\n` +
+    `After=network-online.target\n` +
+    `\n` +
+    `[Service]\n` +
+    `Type=simple\n` +
+    `ExecStart=matterbridge -service\n` +
+    `WorkingDirectory=~\n` +
+    `StandardOutput=inherit\n` +
+    `StandardError=inherit\n` +
+    `Restart=always\n` +
+    `User=${user}\nGroup=${user}\n` +
+    `\n` +
+    `[Install]\n` +
+    `WantedBy=multi-user.target\n`;
   const servicePath = `/etc/systemd/system/matterbridge.service`;
 
   if (!user) {
@@ -168,7 +183,7 @@ function createServiceConfig() {
     return;
   }
   if (existsSync(servicePath)) {
-    // console.debug(`Service configuration already exists at ${servicePath}. No changes made.`);
+    console.log(`Service configuration already exists at ${servicePath}. No changes made.`);
     return;
   }
   try {

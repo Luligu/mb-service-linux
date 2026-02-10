@@ -2,6 +2,9 @@
 
 // This ESLint configuration is designed for a TypeScript project.
 
+import path from 'node:path';
+import url from 'node:url';
+
 import { defineConfig } from 'eslint/config';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -13,15 +16,24 @@ import pluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import pluginJest from 'eslint-plugin-jest';
 import pluginVitest from '@vitest/eslint-plugin';
 
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export default defineConfig([
   {
     name: 'Global Ignores',
-    ignores: ['dist', 'node_modules', 'coverage', 'build'],
+    ignores: ['.cache', 'apps', 'build', 'coverage', 'dist', 'jest', 'node_modules', 'packages', 'screenshots', 'temp', 'vendor', 'vite.config.ts'],
   },
-  js.configs.recommended,
-  ...tseslint.configs.strict,
-  // Comment the previous line and uncomment the following line if you want to use strict with type checking
-  // ...tseslint.configs.strictTypeChecked,
+  {
+    name: 'JavaScript & TypeScript Source Files',
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    plugins: { js },
+    extends: ['js/recommended'],
+  },
+  // Comment out this line if you want to enable strict type-checked rules, but be aware that it may cause many errors until you fix all type issues in your codebase
+  tseslint.configs.strict,
+  // Uncomment this line to enable strict type-checked rules, but be aware that it may cause many errors until you fix all type issues in your codebase
+  // tseslint.configs.strictTypeChecked,
   pluginImport.flatConfigs.recommended,
   pluginN.configs['flat/recommended-script'],
   pluginPromise.configs['flat/recommended'],
@@ -32,6 +44,10 @@ export default defineConfig([
     languageOptions: {
       sourceType: 'module',
       ecmaVersion: 'latest',
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+        project: './tsconfig.json',
+      },
     },
     linterOptions: {
       reportUnusedDisableDirectives: 'error', // Report unused eslint-disable directives
@@ -58,7 +74,7 @@ export default defineConfig([
   },
   {
     name: 'JavaScript Source Files',
-    files: ['**/*.js'],
+    files: ['**/*.{js,mjs,cjs}'],
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
@@ -67,11 +83,6 @@ export default defineConfig([
     ignores: ['src/**/*.test.ts', 'src/**/*.spec.ts'], // Ignore test files
     languageOptions: {
       parser: tseslint.parser,
-      parserOptions: {
-        project: './tsconfig.json',
-        sourceType: 'module',
-        ecmaVersion: 'latest',
-      },
     },
     rules: {
       // Override/add rules specific to typescript files here
@@ -97,8 +108,6 @@ export default defineConfig([
       parser: tseslint.parser,
       parserOptions: {
         project: './tsconfig.jest.json', // Use a separate tsconfig for Jest tests with "isolatedModules": true
-        sourceType: 'module',
-        ecmaVersion: 'latest',
       },
     },
     plugins: {
@@ -122,9 +131,7 @@ export default defineConfig([
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: './tsconfig.jest.json', // Or your shared tsconfig
-        sourceType: 'module',
-        ecmaVersion: 'latest',
+        project: './tsconfig.vitest.json', // Use a separate tsconfig for Vitest tests
       },
     },
     plugins: {
