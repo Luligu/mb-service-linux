@@ -172,7 +172,8 @@ function createServiceConfig() {
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +
     `Restart=always\n` +
-    `User=${user}\nGroup=${user}\n` +
+    `User=${user}\n` +
+    `Group=${user}\n` +
     `\n` +
     `[Install]\n` +
     `WantedBy=multi-user.target\n`;
