@@ -25,6 +25,8 @@ If you like this project and find it useful, please consider giving it a star on
 
 - [package]: Updated dependencies.
 - [package]: Updated package to Automator v. 3.0.7.
+- [package]: Added cache for eslint, prettier and jest under .cache.
+- [publish]: Migrated to trusted publishing / OIDC. Since you can authorize only one workflow with OIDC, publish.yml now does both the publishing with tag latest (on release) and with tag dev (on schedule or manual trigger).
 - [workflows]: Updated all workflows to use Node.js 24.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
