@@ -25,8 +25,8 @@
 /* eslint-disable no-console */
 // console.warn('Loaded module.ts.');
 
-import { existsSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { existsSync, writeFileSync } from 'node:fs';
 
 /**
  * Main entry point for the mb-service command.

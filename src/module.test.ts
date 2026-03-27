@@ -36,7 +36,7 @@ const consoleDebugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {}
 import { jest } from '@jest/globals';
 
 // console.warn('Loading ../src/module.ts');
-const { main } = await import('./module.ts');
+const { main } = await import('./module.js');
 
 describe('mb-service main', () => {
   const servicePath = `/etc/systemd/system/matterbridge.service`;
@@ -50,7 +50,7 @@ describe('mb-service main', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Object.defineProperty(process, 'platform', { value: originalPlatform });
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts'];
+    process.argv = ['/usr/bin/node', '/workspaces/mb-service/dist/module.js'];
   });
 
   afterAll(() => {
