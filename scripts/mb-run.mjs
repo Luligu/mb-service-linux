@@ -3,11 +3,14 @@ import { execFileSync, spawn } from 'node:child_process';
 import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(scriptDir, '..');
+// IMPORTANT: This script operates on the package.json in the current working directory.
+// It may be executed from other repos/packages, so do not assume the script's own path.
+const repoRoot = process.cwd();
 const isWindows = process.platform === 'win32';
+const scriptVersion = '1.0.0';
+let dryRunMode = false;
+let verboseCommands = false;
 
 const BIN_ENTRYPOINTS = {
   tsc: ['typescript', 'bin/tsc'],
@@ -34,21 +37,27 @@ class ExitError extends Error {
  * Prints CLI usage text.
  */
 function printUsage() {
+  const title = `${brightCyan('mb-run')} ${brightBlack('version')} ${brightWhite(scriptVersion)}`;
+  const usageLine = `${brightYellow('Usage:')} ${green('mb-run')} [--reset] [--clean] [--build|--build-production] [--watch] [--test] [--lint|--lint-fix] [--format|--format-check] [--dry-run] [--version [dev|edge|git|local|next|alpha|beta]]`;
   const msg = `\
-Usage: mb-run [--reset] [--clean] [--build|--build-production] [--watch] [--test] [--lint|--lint-fix] [--format|--format-check] [--version [dev|edge|git|local|next|alpha|beta]]
+${title}
 
-Runs the same operations as the root package.json scripts, but executes the local
+Runs the same operations as the package.json scripts in the current working directory, but executes the local
 binaries in node_modules/.bin directly (does not call npm scripts).
 
-Notes:
-- If multiple flags are provided, tasks run in this order: reset → clean → build/build-production → test → lint → format → watch
-- --reset empties .cache/ and node_modules/ (keeps directories for devcontainer named volumes), then runs npm install and build
-- --test sets NODE_OPTIONS="--experimental-vm-modules --no-warnings" like the existing scripts
-- --lint-fix runs eslint with --fix
-- --format-check runs prettier with --check
-- --build prefers per-workspace tsconfig.build.json when present
-- --build-production prefers tsconfig.production.build.json, else tsconfig.production.json
-- --version updates versions for root and all configured workspaces
+${usageLine}
+
+${brightYellow('Notes:')}
+- ${cyan('Multiple flags')} are run in this order: ${brightBlack('reset → clean → build/build-production → test → lint → format → watch')}
+- ${green('--reset')} empties .cache/ and node_modules/ (keeps directories for devcontainer named volumes), then runs npm install and build
+- ${green('--test')} sets NODE_OPTIONS="--experimental-vm-modules --no-warnings" like the existing scripts
+- ${green('--lint-fix')} runs eslint with --fix
+- ${green('--format-check')} runs prettier with --check
+- ${green('--build')} prefers per-workspace tsconfig.build.json when present
+- ${green('--build-production')} prefers tsconfig.build.production.json, else tsconfig.build.json, else tsconfig.json
+- ${green('--dry-run')} logs intended actions without changing files or executing commands
+- ${green('--version')} updates versions for the current package and all configured workspaces
+- ${green('--verbose')} prints each external command before it is executed
 `;
 
   console.log(msg);
@@ -59,10 +68,10 @@ Notes:
  */
 function printVersionUsage() {
   const msg = [
-    'Usage: node scripts/mb-run.mjs  --version [dev|edge|git|local|next|alpha|beta]',
-    'Updates package.json + package-lock.json (root and workspaces) version to:',
-    '  <baseVersion>-<dev|edge|git|local|next|alpha|beta>-<yyyymmdd>-<7charSha>',
-    'Or with no tag, strips the suffix back to <baseVersion>.',
+    `${brightYellow('Usage:')} ${green('mb-run')} ${green('--version')} [dev|edge|git|local|next|alpha|beta]`,
+    `${cyan('Updates')} package.json + package-lock.json (current package and workspaces) version to:`,
+    `  ${brightBlack('<baseVersion>-<dev|edge|git|local|next|alpha|beta>-<yyyymmdd>-<7charSha>')}`,
+    `Or with no tag, strips the suffix back to ${brightBlack('<baseVersion>')}.`,
   ].join('\n');
 
   console.log(msg);
@@ -98,12 +107,87 @@ function formatYyyymmdd(date) {
 }
 
 /**
+ * Formats a command argument for verbose logging.
+ *
+ * @param {string} arg Argument value.
+ * @returns {string} Formatted argument.
+ */
+function formatCommandArg(arg) {
+  if (arg === '') return '""';
+  return /[\s"]/u.test(arg) ? JSON.stringify(arg) : arg;
+}
+
+/**
+ * Returns whether action logging should be printed.
+ *
+ * @returns {boolean} True when actions should be logged.
+ */
+function shouldLogActions() {
+  return verboseCommands || dryRunMode;
+}
+
+/**
+ * Formats the shared action log prefix.
+ *
+ * @returns {string} Colored log prefix.
+ */
+function logPrefix() {
+  return dryRunMode ? `${green('[mb-run]')} ${reverse(magenta('[dry]'))}` : green('[mb-run]');
+}
+
+/**
+ * Prints a command when --verbose is enabled.
+ *
+ * @param {string} command Executable.
+ * @param {string[]} args CLI args.
+ * @param {string} [cwd] Working directory.
+ */
+function logCommand(command, args, cwd = repoRoot) {
+  if (!shouldLogActions()) return;
+  console.log(`${logPrefix()} ${cyan(cwd)}>${[command, ...args].map(formatCommandArg).join(' ') ? ` ${[command, ...args].map(formatCommandArg).join(' ')}` : ''}`);
+}
+
+/**
+ * Prints a delete operation when --verbose is enabled.
+ *
+ * @param {string} targetPath Path being removed.
+ */
+function logDelete(targetPath) {
+  if (!shouldLogActions()) return;
+  const resolvedPath = path.resolve(targetPath);
+  console.log(`${logPrefix()} ${cyan(path.dirname(resolvedPath))}> ${brightRed('delete')} ${formatCommandArg(path.basename(resolvedPath))}`);
+}
+
+/**
+ * Prints a directory creation operation when actions are being logged.
+ *
+ * @param {string} dirPath Directory being created.
+ */
+function logCreateDir(dirPath) {
+  if (!shouldLogActions()) return;
+  const resolvedPath = path.resolve(dirPath);
+  console.log(`${logPrefix()} ${cyan(path.dirname(resolvedPath))}> ${brightYellow('mkdir')} ${formatCommandArg(path.basename(resolvedPath))}`);
+}
+
+/**
+ * Prints a file write operation when actions are being logged.
+ *
+ * @param {string} filePath File being written.
+ */
+function logWriteFile(filePath) {
+  if (!shouldLogActions()) return;
+  const resolvedPath = path.resolve(filePath);
+  console.log(`${logPrefix()} ${cyan(path.dirname(resolvedPath))}> ${brightYellow('write')} ${formatCommandArg(path.basename(resolvedPath))}`);
+}
+
+/**
  * Returns a 7-char git SHA from the current repo.
  *
  * @param {string} cwd Repo root.
  * @returns {string} sha7.
  */
 function shortSha7FromGit(cwd) {
+  logCommand('git', ['rev-parse', '--short=7', 'HEAD'], cwd);
   const out = execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], {
     cwd,
     encoding: 'utf8',
@@ -163,15 +247,16 @@ async function updateRootVersion(tag) {
   const baseVersion = extractBaseSemver(currentVersion);
   const nextVersion = tag ? `${baseVersion}-${tag}-${formatYyyymmdd(new Date())}-${getShortSha7(repoRoot)}` : baseVersion;
 
-  // Use npm so package-lock.json is updated too, and update only the packages declared in the root workspaces.
+  /** @type {unknown} */
+  const workspacesConfig = pkg?.workspaces;
+  const hasWorkspaces = Array.isArray(workspacesConfig) || (workspacesConfig && typeof workspacesConfig === 'object' && Array.isArray(workspacesConfig.packages));
+
+  // Use npm so package-lock.json is updated too.
   // Allow same version so re-running can resync package-lock.json or out-of-sync workspace versions.
-  await runCommand(
-    'npm',
-    ['version', nextVersion, '--workspaces', '--include-workspace-root', '--no-workspaces-update', '--no-git-tag-version', '--ignore-scripts', '--allow-same-version'],
-    {
-      cwd: repoRoot,
-    },
-  );
+  const args = hasWorkspaces
+    ? ['version', nextVersion, '--workspaces', '--include-workspace-root', '--no-workspaces-update', '--no-git-tag-version', '--ignore-scripts', '--allow-same-version']
+    : ['version', nextVersion, '--no-git-tag-version', '--ignore-scripts', '--allow-same-version'];
+  await runCommand('npm', args, { cwd: repoRoot });
 
   return nextVersion;
 }
@@ -299,9 +384,7 @@ async function updateWorkspaceDependencyVersions(targetVersion) {
           if (!workspaceNames.has(depName)) continue;
           if (depName === selfName) continue;
 
-          const current = String(deps[depName] ?? '');
-          const prefix = current.startsWith('~') ? '~' : '^';
-          const nextRange = `${prefix}${targetVersion}`;
+          const nextRange = targetVersion;
           if (deps[depName] !== nextRange) {
             deps[depName] = nextRange;
             changed = true;
@@ -310,6 +393,8 @@ async function updateWorkspaceDependencyVersions(targetVersion) {
       }
 
       if (changed) {
+        logWriteFile(packageJsonPath);
+        if (dryRunMode) return;
         await writeFile(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
       }
     }),
@@ -413,10 +498,11 @@ async function runWorkspaceBuild(options) {
  * @returns {Promise<void>} Resolves when the tool exits successfully.
  */
 async function runBin(binName, args, options = {}) {
-  await assertBinExists(binName);
-
   const entry = entrypointPath(binName);
   if (entry) {
+    logCommand(process.execPath, [entry, ...args]);
+    if (dryRunMode) return;
+    await assertBinExists(binName);
     const child = spawn(process.execPath, [entry, ...args], {
       stdio: 'inherit',
       env: { ...process.env, ...options.env },
@@ -433,6 +519,9 @@ async function runBin(binName, args, options = {}) {
     return;
   }
 
+  logCommand(binPath(binName), args);
+  if (dryRunMode) return;
+  await assertBinExists(binName);
   const child = isWindows
     ? spawn('cmd.exe', ['/d', '/s', '/c', binPath(binName), ...args], {
         stdio: 'inherit',
@@ -460,6 +549,8 @@ async function runBin(binName, args, options = {}) {
  * @returns {Promise<void>} Resolves when removed.
  */
 async function removePath(targetPath) {
+  logDelete(targetPath);
+  if (dryRunMode) return;
   await rm(targetPath, { recursive: true, force: true });
 }
 
@@ -470,6 +561,8 @@ async function removePath(targetPath) {
  * @returns {Promise<void>} Resolves when the directory exists.
  */
 async function ensureDir(dirPath) {
+  logCreateDir(dirPath);
+  if (dryRunMode) return;
   await mkdir(dirPath, { recursive: true });
 }
 
@@ -480,6 +573,10 @@ async function ensureDir(dirPath) {
  * @returns {Promise<void>} Resolves when emptied.
  */
 async function emptyDir(dirPath) {
+  if (dryRunMode && !(await fileExists(dirPath))) {
+    logCreateDir(dirPath);
+    return;
+  }
   await ensureDir(dirPath);
   const entries = await readdir(dirPath, { withFileTypes: true });
   await Promise.all(
@@ -566,6 +663,7 @@ async function cleanWorkspaceArtifacts(parentDir, options = { ensureDirs: false 
       .map(async (d) => {
         const wsRoot = path.join(parentDir, d.name);
         await Promise.all([
+          removePath(path.join(wsRoot, 'build')),
           removePath(path.join(wsRoot, 'dist')),
           removePath(path.join(wsRoot, 'dist-jest')),
           removePath(path.join(wsRoot, 'coverage')),
@@ -593,6 +691,7 @@ async function commonClean(options) {
   await removeTsBuildInfo(repoRoot);
 
   await Promise.all([
+    removePath(path.join(repoRoot, 'build')),
     removePath(path.join(repoRoot, 'dist')),
     removePath(path.join(repoRoot, 'dist-jest')),
     removePath(path.join(repoRoot, 'coverage')),
@@ -644,6 +743,8 @@ async function cleanOnly() {
 async function runCommand(command, args, options = {}) {
   const resolvedCommand = isWindows && path.extname(command) === '' ? `${command}.cmd` : command;
   const isCmdShim = isWindows && ['.cmd', '.bat'].includes(path.extname(resolvedCommand).toLowerCase());
+  logCommand(resolvedCommand, args, options.cwd);
+  if (dryRunMode) return;
   const child = isCmdShim
     ? spawn('cmd.exe', ['/d', '/s', '/c', resolvedCommand, ...args], {
         stdio: 'inherit',
@@ -671,6 +772,13 @@ async function runCommand(command, args, options = {}) {
  */
 async function main() {
   const rawArgs = process.argv.slice(2);
+
+  // Validate that the current working directory is a package root.
+  if (!(await fileExists(path.join(repoRoot, 'package.json')))) {
+    printUsage();
+    throw new ExitError(1, `No package.json found in current working directory: ${repoRoot}`);
+  }
+
   if (rawArgs.length === 0) {
     printUsage();
     throw new ExitError(1, 'No arguments provided');
@@ -690,11 +798,16 @@ async function main() {
     '--lint-fix',
     '--format',
     '--format-check',
+    '--dry-run',
     '--reset',
     '--version',
+    '--verbose',
     '--help',
     '-h',
   ]);
+
+  dryRunMode = rawArgs.includes('--dry-run');
+  verboseCommands = rawArgs.includes('--verbose');
 
   const versionIndex = rawArgs.indexOf('--version');
   const candidateVersionArg = versionIndex >= 0 ? rawArgs[versionIndex + 1] : undefined;
@@ -809,3 +922,236 @@ try {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = exitCode;
 }
+
+/**
+ * Returns whether ANSI output should be used.
+ *
+ * @returns {boolean} True when ANSI output is enabled.
+ */
+function shouldUseAnsi() {
+  if (process.env.NO_COLOR) return false;
+  if (process.env.TERM === 'dumb') return false;
+  return Boolean(process.stdout?.isTTY);
+}
+
+/**
+ * Wraps text with an ANSI style when enabled.
+ *
+ * @param {string} open Opening ANSI code.
+ * @param {string} close Closing ANSI code.
+ * @param {string} text Text to style.
+ * @returns {string} Styled or plain text.
+ */
+function wrapAnsi(open, close, text) {
+  return shouldUseAnsi() ? `${open}${text}${close}` : text;
+}
+
+/**
+ * Applies reverse-video ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function reverse(text) {
+  return wrapAnsi('\u001B[7m', '\u001B[27m', text);
+}
+
+/**
+ * Applies black ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function black(text) {
+  return wrapAnsi('\u001B[30m', '\u001B[39m', text);
+}
+
+/**
+ * Applies red ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function red(text) {
+  return wrapAnsi('\u001B[31m', '\u001B[39m', text);
+}
+
+/**
+ * Applies green ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function green(text) {
+  return wrapAnsi('\u001B[32m', '\u001B[39m', text);
+}
+
+/**
+ * Applies yellow ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function yellow(text) {
+  return wrapAnsi('\u001B[33m', '\u001B[39m', text);
+}
+
+/**
+ * Applies blue ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function blue(text) {
+  return wrapAnsi('\u001B[34m', '\u001B[39m', text);
+}
+
+/**
+ * Applies magenta ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function magenta(text) {
+  return wrapAnsi('\u001B[35m', '\u001B[39m', text);
+}
+
+/**
+ * Applies cyan ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function cyan(text) {
+  return wrapAnsi('\u001B[36m', '\u001B[39m', text);
+}
+
+/**
+ * Applies white ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function white(text) {
+  return wrapAnsi('\u001B[37m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright black ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightBlack(text) {
+  return wrapAnsi('\u001B[90m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright red ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightRed(text) {
+  return wrapAnsi('\u001B[91m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright green ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightGreen(text) {
+  return wrapAnsi('\u001B[92m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright yellow ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightYellow(text) {
+  return wrapAnsi('\u001B[93m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright blue ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightBlue(text) {
+  return wrapAnsi('\u001B[94m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright magenta ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightMagenta(text) {
+  return wrapAnsi('\u001B[95m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright cyan ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightCyan(text) {
+  return wrapAnsi('\u001B[96m', '\u001B[39m', text);
+}
+
+/**
+ * Applies bright white ANSI styling.
+ *
+ * @param {string} text Text to style.
+ * @returns {string} Styled text.
+ */
+function brightWhite(text) {
+  return wrapAnsi('\u001B[97m', '\u001B[39m', text);
+}
+
+/**
+ * Saves the current cursor position.
+ *
+ * @returns {string} ANSI cursor save sequence.
+ */
+function savePos() {
+  return shouldUseAnsi() ? '\u001B[s' : '';
+}
+
+/**
+ * Restores the saved cursor position and clears everything after it.
+ *
+ * @returns {string} ANSI cursor restore and clear sequence.
+ */
+function restorePos() {
+  return shouldUseAnsi() ? '\u001B[u\u001B[J' : '';
+}
+
+export {
+  black,
+  blue,
+  brightBlack,
+  brightBlue,
+  brightCyan,
+  brightGreen,
+  brightMagenta,
+  brightRed,
+  brightWhite,
+  brightYellow,
+  cyan,
+  green,
+  magenta,
+  red,
+  restorePos,
+  reverse,
+  savePos,
+  white,
+  yellow,
+};
