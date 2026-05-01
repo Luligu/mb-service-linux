@@ -72,7 +72,7 @@
     "test": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --maxWorkers=100%",
     "test:watch": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --maxWorkers=100% --watch",
     "test:verbose": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --maxWorkers=100% --verbose",
-    "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --maxWorkers=100% --coverage",
+    "test:coverage": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest --maxWorkers=100% --coverage --coverageThreshold=\"{ \\\"global\\\": {\\\"statements\\\": 100, \\\"branches\\\": 100, \\\"lines\\\": 100, \\\"functions\\\": 100 } }\"",
     "test:typecheck": "tsc --project tsconfig.jest.json --isolatedModules false --noEmit",
     "test:debug": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "eslint --cache --cache-location .cache/.eslintcache --max-warnings=0 .",
