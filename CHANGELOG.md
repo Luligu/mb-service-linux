@@ -23,6 +23,12 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [1.0.4] - Dev branch
 
+### Added
+
+- [package]: Enable @typescript-eslint promise rules.
+
+### Changed
+
 - [package]: Update dependencies.
 - [package]: Bump package to `automator` v.3.1.9.
 - [package]: Bump `typescript-eslint` to v.8.59.3.
