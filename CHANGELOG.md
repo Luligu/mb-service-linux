@@ -21,6 +21,22 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
+## [1.0.4] - Dev branch
+
+- [package]: Update dependencies.
+- [package]: Bump package to `automator` v.3.1.9.
+- [package]: Bump `typescript-eslint` to v.8.59.3.
+- [package]: Bump `jest` to v.30.4.2.
+- [package]: Refactor `scripts`.
+- [eslint]: Add `eslint` v.2.0.4 config.
+- [package]: Add package script `typecheck`.
+- [package]: Add Node.js 26 to package `engines` field.
+- [workflows]: Add Node.js 26 to `build.yml` Node matrix and remove Node.js 20.
+- [jest]: Add `jest` v.2.0.1 config.
+- [agent]: Update `agent instructions`.
+
+<a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
+
 ## [1.0.3] - 2025-05-01
 
 ### Changed
