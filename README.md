@@ -15,7 +15,7 @@
 
 This project allow you to setup and control the service mode of Matterbridge for Linux.
 
-If you run on macOS use [Matterbridge Service for macOS](https://www.npmjs.com/package/mb-service)
+If you run on macOS try the [Matterbridge Service for macOS](https://www.npmjs.com/package/mb-service)
 
 ## Available Commands
 
