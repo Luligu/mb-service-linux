@@ -21,9 +21,8 @@
  * limitations under the License.
  */
 
-/* eslint-disable n/no-process-exit */
-/* eslint-disable no-console */
-// console.warn('Loaded module.ts.');
+/* oxlint-disable unicorn/no-process-exit */
+/* oxlint-disable no-console */
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
@@ -34,7 +33,7 @@ import { existsSync, writeFileSync } from 'node:fs';
  * It checks if the system is running on Linux and not inside a container.
  * If the conditions are met, it prints the help screen for mb-service if no command is given.
  */
-export function main() {
+export function main(): void {
   // Exit if not running on Linux
   if (process.platform !== 'linux') {
     console.error('This command is only available on Linux systems. Please use the mb-service for your platform.');
@@ -135,7 +134,7 @@ export function main() {
 /**
  * Prints the help screen for mb-service, similar to hb-service for Homebridge.
  */
-function printHelp() {
+function printHelp(): void {
   console.log(
     `Usage: mb-service [start|stop|restart|logs|status]\n\n` +
       `  Please provide a command:\n` +
@@ -158,7 +157,8 @@ function printHelp() {
 /**
  * Create the systemd service configuration for Matterbridge.
  */
-function createServiceConfig() {
+function createServiceConfig(): void {
+  // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- an empty SUDO_USER must fall through to USER
   const user = process.env.SUDO_USER || process.env.USER;
   const config =
     `[Unit]\n` +
@@ -191,7 +191,7 @@ function createServiceConfig() {
     writeFileSync(servicePath, config, { mode: 0o644 });
     console.log(`Service configuration written to ${servicePath} successfully for user ${user}.`);
   } catch (err) {
-    console.error(`Failed to write service file: ${err}`);
+    console.error(`Failed to write service file: ${String(err)}`);
     process.exit(1);
   }
   try {
@@ -202,7 +202,7 @@ function createServiceConfig() {
       console.log('Systemd daemon reloaded successfully.');
     }
   } catch (err) {
-    console.error(`Failed to reload systemd daemon: ${err}`);
+    console.error(`Failed to reload systemd daemon: ${String(err)}`);
     process.exit(1);
   }
 }
@@ -210,7 +210,7 @@ function createServiceConfig() {
 /**
  * Start the matterbridge service using systemctl.
  */
-function startMatterbridgeService() {
+function startMatterbridgeService(): void {
   const result = spawnSync('systemctl', ['start', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to start matterbridge service:', result.error.message);
@@ -220,7 +220,7 @@ function startMatterbridgeService() {
 /**
  * Stop the matterbridge service using systemctl.
  */
-function stopMatterbridgeService() {
+function stopMatterbridgeService(): void {
   const result = spawnSync('systemctl', ['stop', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to stop matterbridge service:', result.error.message);
@@ -230,7 +230,7 @@ function stopMatterbridgeService() {
 /**
  * Restart the matterbridge service using systemctl.
  */
-function restartMatterbridgeService() {
+function restartMatterbridgeService(): void {
   const result = spawnSync('systemctl', ['restart', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to restart matterbridge service:', result.error.message);
@@ -240,7 +240,7 @@ function restartMatterbridgeService() {
 /**
  * Enable the matterbridge service using systemctl.
  */
-function enableMatterbridgeService() {
+function enableMatterbridgeService(): void {
   const result = spawnSync('systemctl', ['enable', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to enable matterbridge service:', result.error.message);
@@ -250,7 +250,7 @@ function enableMatterbridgeService() {
 /**
  * Disable the matterbridge service using systemctl.
  */
-function disableMatterbridgeService() {
+function disableMatterbridgeService(): void {
   const result = spawnSync('systemctl', ['disable', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to disable matterbridge service:', result.error.message);
@@ -262,7 +262,7 @@ function disableMatterbridgeService() {
  *
  * @param {string} pkg - The npm package name (and optional version) to install globally.
  */
-function installGlobalPackage(pkg: string) {
+function installGlobalPackage(pkg: string): void {
   const result = spawnSync('npm', ['install', pkg, '--global', '--omit=dev', '--verbose'], { stdio: 'inherit' });
   if (result.error) {
     console.error(`Failed to install ${pkg}:`, result.error.message);
@@ -274,7 +274,7 @@ function installGlobalPackage(pkg: string) {
  *
  * @param {string} pkg - The npm package name (and optional version) to uninstall globally.
  */
-function uninstallGlobalPackage(pkg: string) {
+function uninstallGlobalPackage(pkg: string): void {
   const result = spawnSync('npm', ['uninstall', pkg, '--global', '--verbose'], { stdio: 'inherit' });
   if (result.error) {
     console.error(`Failed to uninstall ${pkg}:`, result.error.message);
@@ -286,7 +286,7 @@ function uninstallGlobalPackage(pkg: string) {
  *
  * @param {string} plugin - The plugin name to add.
  */
-function addMatterbridgePlugin(plugin: string) {
+function addMatterbridgePlugin(plugin: string): void {
   const result = spawnSync('matterbridge', ['-add', plugin], { stdio: 'inherit' });
   if (result.error) {
     console.error(`Failed to add plugin ${plugin}:`, result.error.message);
@@ -298,7 +298,7 @@ function addMatterbridgePlugin(plugin: string) {
  *
  * @param {string} plugin - The plugin name to remove.
  */
-function removeMatterbridgePlugin(plugin: string) {
+function removeMatterbridgePlugin(plugin: string): void {
   const result = spawnSync('matterbridge', ['-remove', plugin], { stdio: 'inherit' });
   if (result.error) {
     console.error(`Failed to remove plugin ${plugin}:`, result.error.message);
@@ -308,7 +308,7 @@ function removeMatterbridgePlugin(plugin: string) {
 /**
  * Show the last 1000 lines of the Matterbridge service logs and follow new logs.
  */
-function showMatterbridgeLogs() {
+function showMatterbridgeLogs(): void {
   const result = spawnSync('journalctl', ['-u', 'matterbridge.service', '-n', '1000', '-f', '--output', 'cat'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to show logs:', result.error.message);
@@ -318,7 +318,7 @@ function showMatterbridgeLogs() {
 /**
  * Show the status of the Matterbridge service using systemctl.
  */
-function showMatterbridgeStatus() {
+function showMatterbridgeStatus(): void {
   const result = spawnSync('systemctl', ['status', 'matterbridge', '--no-pager'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to get status:', result.error.message);

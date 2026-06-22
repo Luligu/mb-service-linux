@@ -7,9 +7,11 @@
 ![Node.js CI](https://github.com/Luligu/mb-service-linux/actions/workflows/build.yml/badge.svg)
 ![CodeQL](https://github.com/Luligu/mb-service-linux/actions/workflows/codeql.yml/badge.svg)
 [![codecov](https://codecov.io/gh/Luligu/mb-service-linux/branch/main/graph/badge.svg)](https://codecov.io/gh/Luligu/mb-service-linux)
-[![styled with prettier](https://img.shields.io/badge/styled_with-Prettier-f8bc45.svg?logo=prettier)](https://prettier.io/)
-[![linted with eslint](https://img.shields.io/badge/linted_with-ES_Lint-4B32C3.svg?logo=eslint)](https://eslint.org/)
+[![tested with Vitest](https://img.shields.io/badge/tested_with-Vitest-6E9F18.svg?logo=vitest&logoColor=white)](https://vitest.dev)
+[![styled with Oxc](https://img.shields.io/badge/styled_with-Oxc-9BE4E0.svg?logo=oxc&logoColor=white)](https://oxc.rs/docs/guide/usage/formatter.html)
+[![linted with Oxc](https://img.shields.io/badge/linted_with-Oxc-9BE4E0.svg?logo=oxc&logoColor=white)](https://oxc.rs/docs/guide/usage/linter.html)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript Native](https://img.shields.io/badge/TypeScript_Native-3178C6?logo=typescript&logoColor=white)](https://github.com/microsoft/typescript-go)
 [![ESM](https://img.shields.io/badge/ESM-Node.js-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![matterbridge.io](https://img.shields.io/badge/matterbridge.io-online-brightgreen)](https://matterbridge.io)
 
@@ -21,33 +23,24 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [1.0.4] - Dev branch
-
-### Added
-
-- [package]: Enable @typescript-eslint promise rules.
+## [1.1.0] - 2026-06-22
 
 ### Changed
 
 - [package]: Update dependencies.
-- [package]: Bump package to `automator` v.3.1.10.
-- [package]: Bump `eslint` to v.10.4.0.
-- [package]: Bump `@types/node` to v.25.9.1.
-- [package]: Bump `ts-jest` to v.29.4.11.
-- [package]: Bump `typescript-eslint` to v.8.59.4.
-- [package]: Bump `eslint-plugin-jsdoc` to v.63.0.0.
-- [package]: Bump `@eslint/markdown` to v.8.0.2.
-- [package]: Bump `npm-check-updates` to v.22.2.0.
-- [package]: Update `.devcontainer/devcontainer.json`.
-- [package]: Update `.vscode/settings.json`.
-- [package]: Add `.vscode/extensions.json`.
-- [package]: Bump `jest` to v.30.4.2.
+- [package]: Migrate to the native toolchain (oxlint, oxfmt, tsgo, vitest).
+- [package]: Bump `@typescript/native-preview` to v.7.0.0-dev.20260622.1.
+- [package]: Bump `typescript` to v.6.0.3.
+- [package]: Bump `vitest` to v.4.1.9.
+- [package]: Bump `oxlint` to v.1.71.0.
+- [package]: Bump `oxfmt` to v.0.56.0.
 - [package]: Refactor `scripts`.
-- [eslint]: Add `eslint` v.2.0.4 config.
 - [package]: Add package script `typecheck`.
 - [package]: Add Node.js 26 to package `engines` field.
 - [workflows]: Add Node.js 26 to `build.yml` Node matrix and remove Node.js 20.
-- [jest]: Add `jest` v.2.0.1 config.
+- [package]: Update `.devcontainer/devcontainer.json`.
+- [package]: Update `.vscode/settings.json`.
+- [package]: Add `.vscode/extensions.json`.
 - [agent]: Update `agent instructions`.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
