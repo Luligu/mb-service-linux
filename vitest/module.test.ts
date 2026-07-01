@@ -292,7 +292,7 @@ describe('mb-service main', () => {
         '  Bun version: not running\n' +
         '  Running as root: yes\n' +
         '  Service user: testuser\n' +
-        '  Root service file: found\n' +
+        `  Root service file: found at "${rootServicePath}"\n` +
         '  User service file: not found\x1b[0m',
     );
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Usage: mb-service'));
@@ -316,7 +316,7 @@ describe('mb-service main', () => {
         '  Running as root: no\n' +
         '  Service user: testuser\n' +
         '  Root service file: not found\n' +
-        '  User service file: found\x1b[0m',
+        `  User service file: found at "${userServicePath}"\x1b[0m`,
     );
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Usage: mb-service'));
   });
