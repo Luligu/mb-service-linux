@@ -39,6 +39,7 @@ Below are the main commands you can use to manage the Matterbridge service and i
 | `unlink`                       | Remove the development link for the current directory |
 | `logs`                         | Tail the Matterbridge service logs                    |
 | `status`                       | Check if the Matterbridge service is running          |
+| `create`                       | Create the Matterbridge service configuration         |
 
 These commands help you control the Matterbridge service and manage plugins efficiently.
 
@@ -58,8 +59,26 @@ See the complete guidelines on [Matterbridge](https://matterbridge.io) for more 
 sudo npm install -g mb-service-linux --omit=dev
 ```
 
-Then start it from a terminal
+Create a root-owned service file when Matterbridge is installed globally with npm:
 
 ```bash
-sudo mb-service
+sudo mb-service create
+sudo mb-service enable
+sudo mb-service start
+```
+
+Create a user-owned service file when Matterbridge is installed for the current user:
+
+```bash
+mb-service create
+mb-service enable
+mb-service start
+```
+
+When using Bun, create and manage the user-owned service without sudo:
+
+```bash
+bunx mb-service create
+bunx mb-service enable
+bunx mb-service start
 ```

@@ -25,7 +25,75 @@
 /* oxlint-disable no-console */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+
+// Cache the detection once — the runtime can't change mid-process.
+const HAS_BUN_GLOBAL = typeof Bun !== 'undefined';
+
+/**
+ * Checks if the current runtime environment is Bun.
+ *
+ * @returns {boolean} True if the current runtime is Bun, false otherwise.
+ */
+export function isBun(): boolean {
+  return HAS_BUN_GLOBAL || typeof process?.versions?.bun === 'string';
+}
+
+/**
+ * Checks if the current user is root.
+ *
+ * @returns {boolean} True if the current user is root, false otherwise.
+ */
+function isRoot(): boolean {
+  return process.getuid?.() === 0;
+}
+
+/**
+ * Checks if the current environment is a Docker container.
+ *
+ * @returns {boolean} True if the current environment is a Docker container, false otherwise.
+ */
+function isDocker(): boolean {
+  return existsSync('/.dockerenv') || existsSync('/run/.containerenv');
+}
+
+/**
+ * Checks if the current operating system is Linux.
+ *
+ * @returns {boolean} True if the current operating system is Linux, false otherwise.
+ */
+function isLinux(): boolean {
+  return process.platform === 'linux';
+}
+
+/**
+ * Gets the path to the Matterbridge service file.
+ *
+ * @param {boolean} root - Whether to get the path for the root user.
+ * @returns {string} The path to the Matterbridge service file.
+ */
+function getServicePath(root: boolean): string {
+  return root ? '/etc/systemd/system/matterbridge.service' : `${process.env.HOME}/.config/systemd/user/matterbridge.service`;
+}
+
+/**
+ * Gets the path to the user-owned Matterbridge service file directory.
+ *
+ * @returns {string} The path to the user-owned Matterbridge service file directory.
+ */
+function getUserServiceDirectory(): string {
+  return `${process.env.HOME}/.config/systemd/user`;
+}
+
+/**
+ * Checks if the Matterbridge service file exists.
+ *
+ * @param {boolean} root - Whether to check for the root user's service file.
+ * @returns {boolean} True if the service file exists, false otherwise.
+ */
+function existsServiceFile(root: boolean): boolean {
+  return existsSync(getServicePath(root));
+}
 
 /**
  * Main entry point for the mb-service command.
@@ -34,22 +102,57 @@ import { existsSync, writeFileSync } from 'node:fs';
  * If the conditions are met, it prints the help screen for mb-service if no command is given.
  */
 export function main(): void {
+  const command = process.argv[2];
+
   // Exit if not running on Linux
-  if (process.platform !== 'linux') {
+  if (!isLinux()) {
     console.error('This command is only available on Linux systems. Please use the mb-service for your platform.');
     return;
   }
 
   // Exit if running inside a container (check for /.dockerenv or /run/.containerenv)
-
-  if (existsSync('/.dockerenv') || existsSync('/run/.containerenv')) {
+  if (isDocker()) {
     console.error('This command is not available inside a container. Please run it on a host system.');
     return;
   }
 
-  // Exit if not running as root
-  if (!isBun() && process.getuid && process.getuid() !== 0) {
-    console.error('This command must be run as root. Please use sudo.');
+  // Exit if both root-owned and user-owned service files exist
+  if (existsServiceFile(true) && existsServiceFile(false)) {
+    console.error(
+      'Both root-owned and user-owned Matterbridge service files exist. ' +
+        'Please remove one of them to avoid conflicts. ' +
+        'Run "sudo rm /etc/systemd/system/matterbridge.service" to remove the root-owned service file. ' +
+        'Run "rm ~/.config/systemd/user/matterbridge.service" to remove the user-owned service file.',
+    );
+    return;
+  }
+
+  // Exit if the service file does not exist and the command is not 'create'
+  if (command !== 'create' && !existsServiceFile(true) && !existsServiceFile(false)) {
+    console.error(
+      'Matterbridge service file does not exist. ' +
+        'Run "sudo mb-service create" if you want to create a root-owned service file. ' +
+        'Run "mb-service create" without sudo to create a user-owned service file.' +
+        'Run "bunx mb-service create" to create a user-owned service file when using Bun.',
+    );
+    return;
+  }
+
+  // On Node.js exit if not running as root
+  if (!isBun() && existsServiceFile(true) && !isRoot()) {
+    console.error('Matterbridge service file is root-owned, this command must be run as root. Please use sudo mb-service.');
+    return;
+  }
+
+  // On Node.js exit if running as root
+  if (!isBun() && existsServiceFile(false) && isRoot()) {
+    console.error('Matterbridge service file is user-owned, this command must not be run as root. Please use mb-service without sudo.');
+    return;
+  }
+
+  // On Bun exit if the service file is system-owned and the command is not 'create'
+  if (isBun() && existsServiceFile(true)) {
+    console.error('Matterbridge service file is system-owned, but with bun you need a user-owned service file.');
     return;
   }
 
@@ -58,9 +161,11 @@ export function main(): void {
     return;
   }
 
-  createServiceConfig();
+  if (command === 'create') {
+    createServiceConfig(isRoot());
+    return;
+  }
 
-  const command = process.argv[2];
   if (command === 'start') {
     startMatterbridgeService();
     return;
@@ -150,33 +255,29 @@ function printHelp(): void {
       `    link                             adds the current directory to matterbridge for plugin development\n` +
       `    unlink                           reverses the link operation for the current directory\n` +
       `    logs                             tails the matterbridge service logs\n` +
-      `    status                           check if matterbridge is running\n`,
+      `    status                           check if matterbridge is running\n` +
+      `    create                           create the matterbridge service configuration\n`,
   );
 }
 
 /**
- * Checks if the current runtime environment is Bun.
- *
- * @returns {boolean} True if the current runtime is Bun, false otherwise.
- */
-function isBun(): boolean {
-  return typeof process?.versions?.bun === 'string';
-}
-
-/**
  * Create the systemd service configuration for Matterbridge.
+ *
+ * @param {boolean} root - Whether to create the service configuration for the root user or the current user.
  */
-function createServiceConfig(): void {
+function createServiceConfig(root: boolean): void {
   // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- an empty SUDO_USER must fall through to USER
   const user = process.env.SUDO_USER || process.env.USER;
-  const config =
+  const rootConfig =
     `[Unit]\n` +
     `Description=matterbridge\n` +
-    `After=network-online.target\n` +
-    `\n` +
+    `After=network.target\n` +
+    `Wants=network.target\n` +
+    `StartLimitIntervalSec=60\n` +
+    `StartLimitBurst=5\n` +
     `[Service]\n` +
     `Type=simple\n` +
-    `ExecStart=matterbridge -service\n` +
+    `ExecStart=matterbridge --service\n` +
     `WorkingDirectory=~\n` +
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +
@@ -186,7 +287,24 @@ function createServiceConfig(): void {
     `\n` +
     `[Install]\n` +
     `WantedBy=multi-user.target\n`;
-  const servicePath = `/etc/systemd/system/matterbridge.service`;
+  const userConfig =
+    `[Unit]\n` +
+    `Description=matterbridge\n` +
+    `After=network.target\n` +
+    `Wants=network.target\n` +
+    `StartLimitIntervalSec=60\n` +
+    `StartLimitBurst=5\n` +
+    `[Service]\n` +
+    `Type=simple\n` +
+    `ExecStart=matterbridge --service\n` +
+    `WorkingDirectory=~\n` +
+    `StandardOutput=inherit\n` +
+    `StandardError=inherit\n` +
+    `Restart=always\n` +
+    `\n` +
+    `[Install]\n` +
+    `WantedBy=default.target\n`;
+  const servicePath = getServicePath(root);
 
   if (!user) {
     console.error('Could not determine the user to run the service. Please set SUDO_USER or USER environment variable.');
@@ -197,14 +315,17 @@ function createServiceConfig(): void {
     return;
   }
   try {
-    writeFileSync(servicePath, config, { mode: 0o644 });
+    if (!root) {
+      mkdirSync(getUserServiceDirectory(), { recursive: true });
+    }
+    writeFileSync(servicePath, root ? rootConfig : userConfig, { mode: 0o644 });
     console.log(`Service configuration written to ${servicePath} successfully for user ${user}.`);
   } catch (err) {
     console.error(`Failed to write service file: ${String(err)}`);
     process.exit(1);
   }
   try {
-    const reload = spawnSync('systemctl', ['daemon-reload'], { stdio: 'inherit' });
+    const reload = spawnSync('systemctl', root ? ['daemon-reload'] : ['--user', 'daemon-reload'], { stdio: 'inherit' });
     if (reload.error) {
       console.error('Failed to reload systemd daemon:', reload.error.message);
     } else {
@@ -220,7 +341,7 @@ function createServiceConfig(): void {
  * Start the matterbridge service using systemctl.
  */
 function startMatterbridgeService(): void {
-  const result = spawnSync('systemctl', ['start', 'matterbridge'], { stdio: 'inherit' });
+  const result = spawnSync('systemctl', isRoot() ? ['start', 'matterbridge'] : ['--user', 'start', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to start matterbridge service:', result.error.message);
   }
@@ -230,7 +351,7 @@ function startMatterbridgeService(): void {
  * Stop the matterbridge service using systemctl.
  */
 function stopMatterbridgeService(): void {
-  const result = spawnSync('systemctl', ['stop', 'matterbridge'], { stdio: 'inherit' });
+  const result = spawnSync('systemctl', isRoot() ? ['stop', 'matterbridge'] : ['--user', 'stop', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to stop matterbridge service:', result.error.message);
   }
@@ -240,7 +361,7 @@ function stopMatterbridgeService(): void {
  * Restart the matterbridge service using systemctl.
  */
 function restartMatterbridgeService(): void {
-  const result = spawnSync('systemctl', ['restart', 'matterbridge'], { stdio: 'inherit' });
+  const result = spawnSync('systemctl', isRoot() ? ['restart', 'matterbridge'] : ['--user', 'restart', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to restart matterbridge service:', result.error.message);
   }
@@ -250,7 +371,7 @@ function restartMatterbridgeService(): void {
  * Enable the matterbridge service using systemctl.
  */
 function enableMatterbridgeService(): void {
-  const result = spawnSync('systemctl', ['enable', 'matterbridge'], { stdio: 'inherit' });
+  const result = spawnSync('systemctl', isRoot() ? ['enable', 'matterbridge'] : ['--user', 'enable', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to enable matterbridge service:', result.error.message);
   }
@@ -260,7 +381,7 @@ function enableMatterbridgeService(): void {
  * Disable the matterbridge service using systemctl.
  */
 function disableMatterbridgeService(): void {
-  const result = spawnSync('systemctl', ['disable', 'matterbridge'], { stdio: 'inherit' });
+  const result = spawnSync('systemctl', isRoot() ? ['disable', 'matterbridge'] : ['--user', 'disable', 'matterbridge'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to disable matterbridge service:', result.error.message);
   }
@@ -272,7 +393,13 @@ function disableMatterbridgeService(): void {
  * @param {string} pkg - The npm package name (and optional version) to install globally.
  */
 function installGlobalPackage(pkg: string): void {
-  const result = spawnSync('npm', ['install', pkg, '--global', '--omit=dev', '--verbose'], { stdio: 'inherit' });
+  if (!isBun() && !isRoot()) {
+    console.error('Installing global packages requires root privileges. Please run this command with sudo.');
+    return;
+  }
+  const result = isBun()
+    ? spawnSync('bun', ['add', pkg, '--global'], { stdio: 'inherit' })
+    : spawnSync('npm', ['install', pkg, '--global', '--omit=dev', '--verbose'], { stdio: 'inherit' });
   if (result.error) {
     console.error(`Failed to install ${pkg}:`, result.error.message);
   }
@@ -284,7 +411,13 @@ function installGlobalPackage(pkg: string): void {
  * @param {string} pkg - The npm package name (and optional version) to uninstall globally.
  */
 function uninstallGlobalPackage(pkg: string): void {
-  const result = spawnSync('npm', ['uninstall', pkg, '--global', '--verbose'], { stdio: 'inherit' });
+  if (!isBun() && !isRoot()) {
+    console.error('Uninstalling global packages requires root privileges. Please run this command with sudo.');
+    return;
+  }
+  const result = isBun()
+    ? spawnSync('bun', ['remove', pkg, '--global'], { stdio: 'inherit' })
+    : spawnSync('npm', ['uninstall', pkg, '--global', '--verbose'], { stdio: 'inherit' });
   if (result.error) {
     console.error(`Failed to uninstall ${pkg}:`, result.error.message);
   }
@@ -318,7 +451,11 @@ function removeMatterbridgePlugin(plugin: string): void {
  * Show the last 1000 lines of the Matterbridge service logs and follow new logs.
  */
 function showMatterbridgeLogs(): void {
-  const result = spawnSync('journalctl', ['-u', 'matterbridge.service', '-n', '1000', '-f', '--output', 'cat'], { stdio: 'inherit' });
+  const result = spawnSync(
+    'journalctl',
+    isRoot() ? ['-u', 'matterbridge.service', '-n', '1000', '-f', '--output', 'cat'] : ['--user', '-u', 'matterbridge.service', '-n', '1000', '-f', '--output', 'cat'],
+    { stdio: 'inherit' },
+  );
   if (result.error) {
     console.error('Failed to show logs:', result.error.message);
   }
@@ -328,7 +465,7 @@ function showMatterbridgeLogs(): void {
  * Show the status of the Matterbridge service using systemctl.
  */
 function showMatterbridgeStatus(): void {
-  const result = spawnSync('systemctl', ['status', 'matterbridge', '--no-pager'], { stdio: 'inherit' });
+  const result = spawnSync('systemctl', isRoot() ? ['status', 'matterbridge', '--no-pager'] : ['--user', 'status', 'matterbridge', '--no-pager'], { stdio: 'inherit' });
   if (result.error) {
     console.error('Failed to get status:', result.error.message);
   }

@@ -24,7 +24,21 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [1.1.1] - Dev branch
+## [2.0.0] - Dev branch
+
+### Added
+
+- [service]: Add `create` command to create the Matterbridge systemd service configuration explicitly.
+- [service]: Add support for user-owned systemd service files under `~/.config/systemd/user`.
+- [bun]: Add Bun runtime detection and Bun global plugin install/uninstall support.
+- [service]: Create the user systemd directory before writing a user-owned service file.
+- [service]: Detect conflicting root-owned and user-owned service files before managing the service.
+
+### Changed
+
+- [service]: Use `systemctl --user` and `journalctl --user` when managing a user-owned service.
+- [service]: Require either a root-owned or user-owned service file before running service management commands.
+- [readme]: Document root-owned, user-owned, and Bun service setup flows.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 

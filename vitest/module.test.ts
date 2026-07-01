@@ -2,10 +2,10 @@
 
 /* oxlint-disable no-console */
 
-// ESM mock of 'node:fs' and 'node:child_process'
 vi.mock('node:fs', () => {
   return {
     existsSync: vi.fn(),
+    mkdirSync: vi.fn(),
     writeFileSync: vi.fn(),
   };
 });
@@ -22,6 +22,10 @@ type SpawnResult = ReturnType<typeof child_process.spawnSync>;
 const spawnOk = {} as SpawnResult;
 const spawnErr = { error: new Error('Test error') } as SpawnResult;
 
+const rootServicePath = '/etc/systemd/system/matterbridge.service';
+const userServiceDirectory = '/home/testuser/.config/systemd/user';
+const userServicePath = `${userServiceDirectory}/matterbridge.service`;
+
 const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
   throw new Error('process.exit');
 });
@@ -37,27 +41,107 @@ describe('mb-service main', () => {
   let mockedUid = 0;
   Object.defineProperty(process, 'getuid', { value: () => mockedUid });
 
+  /**
+   * Set the mocked platform.
+   *
+   * @param {NodeJS.Platform} platform The platform to expose through process.platform.
+   * @returns {void}
+   */
+  function setPlatform(platform: NodeJS.Platform): void {
+    Object.defineProperty(process, 'platform', { value: platform });
+  }
+
+  /**
+   * Set whether the mocked process runs as root.
+   *
+   * @param {boolean} root Whether process.getuid should return root.
+   * @returns {void}
+   */
+  function setRoot(root: boolean): void {
+    mockedUid = root ? 0 : 1000;
+  }
+
+  /**
+   * Set the command line arguments for the command under test.
+   *
+   * @param {...string} args Command arguments after the executable path.
+   * @returns {void}
+   */
+  function setCommand(...args: string[]): void {
+    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', ...args];
+  }
+
+  /**
+   * Mock the service file state.
+   *
+   * @param {object} options Service file options.
+   * @param {boolean} options.root Whether the root-owned service file exists.
+   * @param {boolean} options.user Whether the user-owned service file exists.
+   * @returns {void}
+   */
+  function mockServiceFiles(options: { root: boolean; user: boolean }): void {
+    vi.mocked(fs.existsSync).mockImplementation((path) => {
+      if (path === '/.dockerenv' || path === '/run/.containerenv') return false;
+      if (path === rootServicePath) return options.root;
+      if (path === userServicePath) return options.user;
+      return false;
+    });
+  }
+
+  /**
+   * Mock the command as running inside a container.
+   *
+   * @param {string} containerPath The container marker path to expose.
+   * @returns {void}
+   */
+  function mockContainer(containerPath: string): void {
+    vi.mocked(fs.existsSync).mockImplementation((path) => path === containerPath);
+  }
+
+  /**
+   * Enable or disable Bun runtime detection for tests.
+   *
+   * @param {boolean} enabled Whether process.versions.bun should be present.
+   * @returns {void}
+   */
+  function setBun(enabled: boolean): void {
+    if (enabled) {
+      Object.defineProperty(process.versions, 'bun', { configurable: true, value: '1.0.0' });
+      return;
+    }
+    Reflect.deleteProperty(process.versions, 'bun');
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
-    Object.defineProperty(process, 'platform', { value: originalPlatform });
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/dist/module.js'];
+    setPlatform(originalPlatform);
+    setRoot(true);
+    setBun(false);
+    process.env = { ...originalEnv, HOME: '/home/testuser', USER: 'testuser' };
+    setCommand();
+    mockServiceFiles({ root: true, user: false });
+    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
+    vi.mocked(fs.mkdirSync).mockImplementation(() => {});
+    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
   });
 
   afterAll(() => {
+    process.env = originalEnv;
+    setBun(false);
     vi.restoreAllMocks();
   });
 
-  it('should mock console.log', () => {
+  it('mocks console.log', () => {
     console.log('This is a test log');
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('This is a test log'));
   });
 
-  it('should mock console.error', () => {
+  it('mocks console.error', () => {
     console.error('This is a test error');
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('This is a test error'));
   });
 
-  it('should mock process.exit', () => {
+  it('mocks process.exit', () => {
     expect(() => {
       // oxlint-disable-next-line unicorn/no-process-exit
       process.exit(1);
@@ -65,331 +149,446 @@ describe('mb-service main', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
-  it('should mock fs.existsSync', () => {
-    vi.mocked(fs.existsSync).mockImplementation((path) => path === '/.dockerenv');
+  it('exits if not running on Linux', () => {
+    setPlatform('win32');
 
-    expect(fs.existsSync('/.dockerenv')).toBe(true);
-    expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('/.dockerenv'));
-
-    expect(fs.existsSync('/.docker')).toBe(false);
-    expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('/.docker'));
-  });
-
-  it('should exit if not running on Linux', () => {
-    Object.defineProperty(process, 'platform', { value: 'win32' });
     main();
+
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('This command is only available on Linux systems.'));
   });
 
-  it('should exit if running inside a container (/.dockerenv)', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation((path) => {
-      return path === '/.dockerenv';
-    });
-    expect(fs.existsSync('/.dockerenv')).toBe(true);
-    expect(fs.existsSync).toHaveBeenCalledWith('/.dockerenv');
-    vi.clearAllMocks();
+  it('exits if running inside a container (/.dockerenv)', () => {
+    setPlatform('linux');
+    mockContainer('/.dockerenv');
 
     main();
+
     expect(fs.existsSync).toHaveBeenCalledWith('/.dockerenv');
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('This command is not available inside a container.'));
   });
 
-  it('should exit if running inside a container (/run/.containerenv)', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation((path) => {
-      return path === '/run/.containerenv';
-    });
-    expect(fs.existsSync('/run/.containerenv')).toBe(true);
-    expect(fs.existsSync).toHaveBeenCalledWith('/run/.containerenv');
-    vi.clearAllMocks();
+  it('exits if running inside a container (/run/.containerenv)', () => {
+    setPlatform('linux');
+    mockContainer('/run/.containerenv');
 
     main();
+
     expect(fs.existsSync).toHaveBeenCalledWith('/run/.containerenv');
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('This command is not available inside a container.'));
   });
 
-  it('should exit if not running as root', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    mockedUid = 1000; // Simulate non-root user
+  it('exits if both service files exist', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: true, user: true });
+
     main();
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('This command must be run as root.'));
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Both root-owned and user-owned Matterbridge service files exist.'));
   });
 
-  it('should print help if no command is given', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    mockedUid = 0; // Simulate root user
+  it('exits if a non-create command runs without a service file', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: false, user: false });
+    setCommand('start');
+
     main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Matterbridge service file does not exist.'));
+  });
+
+  it('exits if a root-owned service is managed without root on Node.js', () => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: true, user: false });
+    setCommand('start');
+
+    main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('this command must be run as root'));
+  });
+
+  it('exits if a user-owned service is managed as root on Node.js', () => {
+    setPlatform('linux');
+    setRoot(true);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('start');
+
+    main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('must not be run as root'));
+  });
+
+  it('exits if Bun sees a system-owned service file', () => {
+    setPlatform('linux');
+    setBun(true);
+    mockServiceFiles({ root: true, user: false });
+    setCommand('start');
+
+    main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('with bun you need a user-owned service file'));
+  });
+
+  it('prints help if no command is given and a service file exists', () => {
+    setPlatform('linux');
+
+    main();
+
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Usage: mb-service'));
   });
 
-  it('should call createServiceConfig', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation((path) => {
-      if (path === '/.dockerenv' || path === '/run/.containerenv') {
-        return false;
-      }
-      return true;
-    });
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'unknown'];
+  it('does nothing for an unknown command when preflight checks pass', () => {
+    setPlatform('linux');
+    setCommand('unknown');
 
-    process.env = { SUDO_USER: undefined, USER: undefined }; // Simulate no SUDO_USER or USER environment variable
     main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+  });
+
+  it('creates a root-owned service file', () => {
+    setPlatform('linux');
+    setRoot(true);
+    mockServiceFiles({ root: false, user: false });
+    setCommand('create');
+
+    main();
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('WantedBy=multi-user.target'), { mode: 0o644 });
+    expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['daemon-reload'], { stdio: 'inherit' });
+  });
+
+  it('creates a user-owned service file and its directory', () => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: false, user: false });
+    setCommand('create');
+
+    main();
+
+    expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('WantedBy=default.target'), { mode: 0o644 });
+    expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
+  });
+
+  it('does not overwrite an existing service file on create', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: true, user: false });
+    setCommand('create');
+
+    main();
+
+    expect(fs.writeFileSync).not.toHaveBeenCalled();
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Service configuration already exists'));
+  });
+
+  it('errors when create cannot determine the service user', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: false, user: false });
+    process.env = { HOME: '/home/testuser' };
+    setCommand('create');
+
+    main();
+
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Could not determine the user to run the service.'));
-    process.env = { ...originalEnv, USER: 'testuser' }; // Restore original environment
+  });
 
-    main();
-
-    vi.mocked(fs.existsSync).mockImplementation((path) => {
-      if (path === '/.dockerenv' || path === '/run/.containerenv') {
-        return false;
-      }
-      return false;
-    });
+  it('exits when writing the service file fails', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: false, user: false });
+    setCommand('create');
     vi.mocked(fs.writeFileSync).mockImplementation(() => {
       throw new Error('Test error');
     });
-    try {
-      main();
-    } catch {
-      // Catch the error thrown by process.exit in createServiceConfig
-    }
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to write service file:'));
 
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
+    expect(() => {
+      main();
+    }).toThrow('process.exit');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to write service file:'));
+  });
+
+  it('exits when reloading systemd throws', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: false, user: false });
+    setCommand('create');
     vi.mocked(child_process.spawnSync).mockImplementation(() => {
       throw new Error('Test error');
     });
-    try {
+
+    expect(() => {
       main();
-    } catch {
-      // Catch the error thrown by process.exit in createServiceConfig
-    }
+    }).toThrow('process.exit');
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to reload systemd daemon:'));
   });
 
-  it('should call startMatterbridgeService on "start"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'start'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-
+  it('reports systemd reload errors', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: false, user: false });
+    setCommand('create');
     vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to reload systemd daemon:', 'Test error');
   });
 
-  it('should call stopMatterbridgeService on "stop"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'stop'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it.each([
+    ['start', ['start', 'matterbridge'], 'Failed to start matterbridge service:'],
+    ['stop', ['stop', 'matterbridge'], 'Failed to stop matterbridge service:'],
+    ['restart', ['restart', 'matterbridge'], 'Failed to restart matterbridge service:'],
+    ['enable', ['enable', 'matterbridge'], 'Failed to enable matterbridge service:'],
+    ['disable', ['disable', 'matterbridge'], 'Failed to disable matterbridge service:'],
+    ['status', ['status', 'matterbridge', '--no-pager'], 'Failed to get status:'],
+  ])('runs systemctl %s for a root-owned service', (command, args, errorMessage) => {
+    setPlatform('linux');
+    setRoot(true);
+    mockServiceFiles({ root: true, user: false });
+    setCommand(command);
 
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', args, { stdio: 'inherit' });
+
+    vi.clearAllMocks();
+    mockServiceFiles({ root: true, user: false });
     vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(errorMessage, 'Test error');
   });
 
-  it('should call restartMatterbridgeService on "restart"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'restart'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it.each([
+    ['start', ['--user', 'start', 'matterbridge'], 'Failed to start matterbridge service:'],
+    ['stop', ['--user', 'stop', 'matterbridge'], 'Failed to stop matterbridge service:'],
+    ['restart', ['--user', 'restart', 'matterbridge'], 'Failed to restart matterbridge service:'],
+    ['enable', ['--user', 'enable', 'matterbridge'], 'Failed to enable matterbridge service:'],
+    ['disable', ['--user', 'disable', 'matterbridge'], 'Failed to disable matterbridge service:'],
+    ['status', ['--user', 'status', 'matterbridge', '--no-pager'], 'Failed to get status:'],
+  ])('runs systemctl %s for a user-owned service', (command, args, errorMessage) => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand(command);
 
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', args, { stdio: 'inherit' });
+
+    vi.clearAllMocks();
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
     vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(errorMessage, 'Test error');
   });
 
-  it('should call enableMatterbridgeService on "enable"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'enable'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('shows root-owned service logs', () => {
+    setPlatform('linux');
+    setRoot(true);
+    setCommand('logs');
 
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('journalctl', ['-u', 'matterbridge.service', '-n', '1000', '-f', '--output', 'cat'], { stdio: 'inherit' });
+  });
+
+  it('shows user-owned service logs', () => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('logs');
+
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('journalctl', ['--user', '-u', 'matterbridge.service', '-n', '1000', '-f', '--output', 'cat'], { stdio: 'inherit' });
+  });
+
+  it('reports log command errors', () => {
+    setPlatform('linux');
+    setCommand('logs');
     vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to show logs:', 'Test error');
   });
 
-  it('should call disableMatterbridgeService on "disable"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'disable'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('requires a package for install', () => {
+    setPlatform('linux');
+    setCommand('install');
 
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
-  });
 
-  it('should error if install command is missing package', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'install'];
-    main();
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Please specify a package to install.'));
   });
 
-  it('should call installGlobalPackage on "install <pkg>"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'install', 'testpkg@1.0.0'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('installs a global npm package as root on Node.js', () => {
+    setPlatform('linux');
+    setCommand('install', 'testpkg@1.0.0');
 
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('npm', ['install', 'testpkg@1.0.0', '--global', '--omit=dev', '--verbose'], { stdio: 'inherit' });
   });
 
-  it('should error if uninstall command is missing package', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'uninstall'];
+  it('does not install a global npm package without root on Node.js', () => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('install', 'testpkg@1.0.0');
+
     main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Installing global packages requires root privileges.'));
+  });
+
+  it('installs a global package with Bun', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('install', 'testpkg@1.0.0');
+
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('bun', ['add', 'testpkg@1.0.0', '--global'], { stdio: 'inherit' });
+  });
+
+  it('reports install command errors', () => {
+    setPlatform('linux');
+    setCommand('install', 'testpkg@1.0.0');
+    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
+    main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to install testpkg@1.0.0:', 'Test error');
+  });
+
+  it('requires a package for uninstall', () => {
+    setPlatform('linux');
+    setCommand('uninstall');
+
+    main();
+
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Please specify a package to uninstall.'));
-
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
-    main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
-  it('should call uninstallGlobalPackage on "uninstall <pkg>"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'uninstall', 'testpkg@1.0.0'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('uninstalls a global npm package as root on Node.js', () => {
+    setPlatform('linux');
+    setCommand('uninstall', 'testpkg@1.0.0');
 
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('npm', ['uninstall', 'testpkg@1.0.0', '--global', '--verbose'], { stdio: 'inherit' });
   });
 
-  it('should error if add command is missing plugin', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'add'];
+  it('does not uninstall a global npm package without root on Node.js', () => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('uninstall', 'testpkg@1.0.0');
+
     main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Uninstalling global packages requires root privileges.'));
+  });
+
+  it('uninstalls a global package with Bun', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('uninstall', 'testpkg@1.0.0');
+
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('bun', ['remove', 'testpkg@1.0.0', '--global'], { stdio: 'inherit' });
+  });
+
+  it('reports uninstall command errors', () => {
+    setPlatform('linux');
+    setCommand('uninstall', 'testpkg@1.0.0');
+    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
+    main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to uninstall testpkg@1.0.0:', 'Test error');
+  });
+
+  it('requires a plugin for add', () => {
+    setPlatform('linux');
+    setCommand('add');
+
+    main();
+
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Please specify a plugin to add.'));
   });
 
-  it('should call addMatterbridgePlugin on "add <plugin>"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'add', 'testplugin'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('adds a Matterbridge plugin', () => {
+    setPlatform('linux');
+    setCommand('add', 'testplugin');
 
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('matterbridge', ['-add', 'testplugin'], { stdio: 'inherit' });
   });
 
-  it('should error if remove command is missing plugin', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'remove'];
+  it('reports add command errors', () => {
+    setPlatform('linux');
+    setCommand('add', 'testplugin');
+    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
     main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to add plugin testplugin:', 'Test error');
+  });
+
+  it('requires a plugin for remove', () => {
+    setPlatform('linux');
+    setCommand('remove');
+
+    main();
+
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Please specify a plugin to remove.'));
   });
 
-  it('should call removeMatterbridgePlugin on "remove <plugin>"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'remove', 'testplugin'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('removes a Matterbridge plugin', () => {
+    setPlatform('linux');
+    setCommand('remove', 'testplugin');
 
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('matterbridge', ['-remove', 'testplugin'], { stdio: 'inherit' });
   });
 
-  it('should call addMatterbridgePlugin on "link"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'link'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-
+  it('reports remove command errors', () => {
+    setPlatform('linux');
+    setCommand('remove', 'testplugin');
     vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to remove plugin testplugin:', 'Test error');
   });
 
-  it('should call removeMatterbridgePlugin on "unlink"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'unlink'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('links the current directory as a Matterbridge plugin', () => {
+    setPlatform('linux');
+    setCommand('link');
 
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('matterbridge', ['-add', './'], { stdio: 'inherit' });
   });
 
-  it('should call showMatterbridgeLogs on "logs"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'logs'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('unlinks the current directory as a Matterbridge plugin', () => {
+    setPlatform('linux');
+    setCommand('unlink');
 
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
     main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
-  });
 
-  it('should call showMatterbridgeStatus on "status"', () => {
-    Object.defineProperty(process, 'platform', { value: 'linux' });
-    vi.mocked(fs.existsSync).mockImplementation(() => false);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => {});
-    process.argv = ['/usr/bin/node', '/workspaces/mb-service/src/module.ts', 'status'];
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
-    main();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-
-    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
-    main();
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(child_process.spawnSync).toHaveBeenCalledWith('matterbridge', ['-remove', './'], { stdio: 'inherit' });
   });
 });
