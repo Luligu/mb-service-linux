@@ -55,8 +55,16 @@ See the complete guidelines on [Matterbridge](https://matterbridge.io) for more 
 
 ## How to install the Matterbridge service cli
 
+Install it with Node.js:
+
 ```bash
-sudo npm install -g mb-service-linux --omit=dev
+sudo npm install mb-service-linux --global --omit=dev
+```
+
+Or install it with Bun:
+
+```bash
+bun add mb-service-linux --global --omit=dev
 ```
 
 Create a root-owned service file when Matterbridge is installed globally with npm:
@@ -67,7 +75,7 @@ sudo mb-service enable
 sudo mb-service start
 ```
 
-Create a user-owned service file when Matterbridge is installed for the current user:
+Create a user-owned service file when Matterbridge is installed for the current user with npm:
 
 ```bash
 mb-service create
