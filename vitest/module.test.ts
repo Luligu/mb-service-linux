@@ -257,6 +257,7 @@ describe('mb-service main', () => {
     main();
 
     expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('WantedBy=multi-user.target'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('ExecStart=matterbridge --service'), { mode: 0o644 });
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['daemon-reload'], { stdio: 'inherit' });
   });
 
@@ -270,6 +271,22 @@ describe('mb-service main', () => {
 
     expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('WantedBy=default.target'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=matterbridge --service'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.not.stringContaining('ExecStart=bunx --bun matterbridge --service'), { mode: 0o644 });
+    expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
+  });
+
+  it('creates a user-owned Bun service file with a Bun ExecStart', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ root: false, user: false });
+    setCommand('create');
+
+    main();
+
+    expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=bunx --bun matterbridge --service'), { mode: 0o644 });
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
   });
 
