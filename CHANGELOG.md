@@ -39,6 +39,8 @@ If you like this project and find it useful, please consider giving it a star on
 - [service]: Use `systemctl --user` and `journalctl --user` when managing a user-owned service.
 - [service]: Require either a root-owned or user-owned service file before running service management commands.
 - [readme]: Document root-owned, user-owned, and Bun service setup flows.
+- [service]: Run package manager `link` and `unlink` commands for development links.
+- [service]: Require root privileges for npm `link` and `unlink` commands on Linux.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 

@@ -592,21 +592,89 @@ describe('mb-service main', () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to remove plugin testplugin:', 'Test error');
   });
 
-  it('links the current directory as a Matterbridge plugin', () => {
+  it('links the current package with npm on Node.js', () => {
     setPlatform('linux');
     setCommand('link');
 
     main();
 
-    expect(child_process.spawnSync).toHaveBeenCalledWith('matterbridge', ['-add', './'], { stdio: 'inherit' });
+    expect(child_process.spawnSync).toHaveBeenCalledWith('npm', ['link'], { stdio: 'inherit' });
   });
 
-  it('unlinks the current directory as a Matterbridge plugin', () => {
+  it('does not link the current package without root on Node.js', () => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('link');
+
+    main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Linking global packages requires root privileges.'));
+  });
+
+  it('links the current package with Bun', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('link');
+
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('bun', ['link'], { stdio: 'inherit' });
+  });
+
+  it('reports link command errors', () => {
+    setPlatform('linux');
+    setCommand('link');
+    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
+    main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to link package:', 'Test error');
+  });
+
+  it('unlinks the current package with npm on Node.js', () => {
     setPlatform('linux');
     setCommand('unlink');
 
     main();
 
-    expect(child_process.spawnSync).toHaveBeenCalledWith('matterbridge', ['-remove', './'], { stdio: 'inherit' });
+    expect(child_process.spawnSync).toHaveBeenCalledWith('npm', ['unlink'], { stdio: 'inherit' });
+  });
+
+  it('does not unlink the current package without root on Node.js', () => {
+    setPlatform('linux');
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('unlink');
+
+    main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Unlinking global packages requires root privileges.'));
+  });
+
+  it('unlinks the current package with Bun', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+    setCommand('unlink');
+
+    main();
+
+    expect(child_process.spawnSync).toHaveBeenCalledWith('bun', ['unlink'], { stdio: 'inherit' });
+  });
+
+  it('reports unlink command errors', () => {
+    setPlatform('linux');
+    setCommand('unlink');
+    vi.mocked(child_process.spawnSync).mockReturnValue(spawnErr);
+
+    main();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to unlink package:', 'Test error');
   });
 });

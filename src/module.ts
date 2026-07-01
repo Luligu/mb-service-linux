@@ -219,11 +219,11 @@ export function main(): void {
     return;
   }
   if (command === 'link') {
-    addMatterbridgePlugin('./');
+    linkPackage();
     return;
   }
   if (command === 'unlink') {
-    removeMatterbridgePlugin('./');
+    unlinkPackage();
     return;
   }
   if (command === 'logs') {
@@ -253,8 +253,8 @@ function printHelp(): void {
       `    uninstall <plugin>@<version>     uninstall a plugin\n` +
       `    add <plugin>                     add a plugin to matterbridge\n` +
       `    remove <plugin>                  remove a plugin from matterbridge\n` +
-      `    link                             adds the current directory to matterbridge for plugin development\n` +
-      `    unlink                           reverses the link operation for the current directory\n` +
+      `    link                             runs npm link or bun link in the current directory\n` +
+      `    unlink                           runs npm unlink or bun unlink in the current directory\n` +
       `    logs                             tails the matterbridge service logs\n` +
       `    status                           check if matterbridge is running\n` +
       `    create                           create the matterbridge service configuration\n`,
@@ -421,6 +421,34 @@ function uninstallGlobalPackage(pkg: string): void {
     : spawnSync('npm', ['uninstall', pkg, '--global', '--verbose'], { stdio: 'inherit' });
   if (result.error) {
     console.error(`Failed to uninstall ${pkg}:`, result.error.message);
+  }
+}
+
+/**
+ * Link the current package using the active package manager.
+ */
+function linkPackage(): void {
+  if (!isBun() && !isRoot()) {
+    console.error('Linking global packages requires root privileges. Please run this command with sudo.');
+    return;
+  }
+  const result = spawnSync(isBun() ? 'bun' : 'npm', ['link'], { stdio: 'inherit' });
+  if (result.error) {
+    console.error('Failed to link package:', result.error.message);
+  }
+}
+
+/**
+ * Unlink the current package using the active package manager.
+ */
+function unlinkPackage(): void {
+  if (!isBun() && !isRoot()) {
+    console.error('Unlinking global packages requires root privileges. Please run this command with sudo.');
+    return;
+  }
+  const result = spawnSync(isBun() ? 'bun' : 'npm', ['unlink'], { stdio: 'inherit' });
+  if (result.error) {
+    console.error('Failed to unlink package:', result.error.message);
   }
 }
 

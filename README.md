@@ -24,22 +24,22 @@ If you run on macOS try the [Matterbridge Service for macOS](https://www.npmjs.c
 
 Below are the main commands you can use to manage the Matterbridge service and its plugins:
 
-| Command                        | Description                                           |
-| ------------------------------ | ----------------------------------------------------- |
-| `start`                        | Start the Matterbridge service                        |
-| `stop`                         | Stop the Matterbridge service                         |
-| `restart`                      | Restart the Matterbridge service                      |
-| `enable`                       | Enable the Matterbridge service                       |
-| `disable`                      | Disable the Matterbridge service                      |
-| `install <plugin>@<version>`   | Install a plugin                                      |
-| `uninstall <plugin>@<version>` | Uninstall a plugin                                    |
-| `add <plugin>`                 | Add a plugin to Matterbridge                          |
-| `remove <plugin>`              | Remove a plugin from Matterbridge                     |
-| `link`                         | Add the current directory as a plugin for development |
-| `unlink`                       | Remove the development link for the current directory |
-| `logs`                         | Tail the Matterbridge service logs                    |
-| `status`                       | Check if the Matterbridge service is running          |
-| `create`                       | Create the Matterbridge service configuration         |
+| Command                        | Description                                               |
+| ------------------------------ | --------------------------------------------------------- |
+| `start`                        | Start the Matterbridge service                            |
+| `stop`                         | Stop the Matterbridge service                             |
+| `restart`                      | Restart the Matterbridge service                          |
+| `enable`                       | Enable the Matterbridge service                           |
+| `disable`                      | Disable the Matterbridge service                          |
+| `install <plugin>@<version>`   | Install a plugin                                          |
+| `uninstall <plugin>@<version>` | Uninstall a plugin                                        |
+| `add <plugin>`                 | Add a plugin to Matterbridge                              |
+| `remove <plugin>`              | Remove a plugin from Matterbridge                         |
+| `link`                         | Run `npm link` or `bun link` in the current directory     |
+| `unlink`                       | Run `npm unlink` or `bun unlink` in the current directory |
+| `logs`                         | Tail the Matterbridge service logs                        |
+| `status`                       | Check if the Matterbridge service is running              |
+| `create`                       | Create the Matterbridge service configuration             |
 
 These commands help you control the Matterbridge service and manage plugins efficiently.
 
