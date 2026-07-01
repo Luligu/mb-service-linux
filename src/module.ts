@@ -48,7 +48,7 @@ export function main(): void {
   }
 
   // Exit if not running as root
-  if (process.getuid && process.getuid() !== 0) {
+  if (!isBun() && process.getuid && process.getuid() !== 0) {
     console.error('This command must be run as root. Please use sudo.');
     return;
   }
@@ -152,6 +152,15 @@ function printHelp(): void {
       `    logs                             tails the matterbridge service logs\n` +
       `    status                           check if matterbridge is running\n`,
   );
+}
+
+/**
+ * Checks if the current runtime environment is Bun.
+ *
+ * @returns {boolean} True if the current runtime is Bun, false otherwise.
+ */
+function isBun(): boolean {
+  return typeof process?.versions?.bun === 'string';
 }
 
 /**
