@@ -297,7 +297,7 @@ function createServiceConfig(root: boolean): void {
     `StartLimitBurst=5\n` +
     `[Service]\n` +
     `Type=simple\n` +
-    (isBun() ? `ExecStart=bunx --bun matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
+    (isBun() ? `ExecStart=bun --bun run matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
     `WorkingDirectory=~\n` +
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +

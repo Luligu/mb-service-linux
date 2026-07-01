@@ -273,7 +273,7 @@ describe('mb-service main', () => {
     expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('WantedBy=default.target'), { mode: 0o644 });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=matterbridge --service'), { mode: 0o644 });
-    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.not.stringContaining('ExecStart=bunx --bun matterbridge --service'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.not.stringContaining('ExecStart=bun --bun run matterbridge --service'), { mode: 0o644 });
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
   });
 
@@ -287,7 +287,7 @@ describe('mb-service main', () => {
     main();
 
     expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
-    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=bunx --bun matterbridge --service'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=bun --bun run matterbridge --service'), { mode: 0o644 });
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
   });
 
