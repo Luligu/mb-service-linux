@@ -323,6 +323,7 @@ function createServiceConfig(root: boolean): void {
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +
     `Restart=always\n` +
+    `RestartSec=5\n` +
     `User=${user}\n` +
     `Group=${user}\n` +
     `\n` +
@@ -342,6 +343,7 @@ function createServiceConfig(root: boolean): void {
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +
     `Restart=always\n` +
+    `RestartSec=5\n` +
     `\n` +
     `[Install]\n` +
     `WantedBy=default.target\n`;
