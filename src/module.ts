@@ -278,8 +278,8 @@ function printHelp(): void {
       `  Bun version: ${process.versions.bun ?? 'not running'}\n` +
       `  Running as root: ${isRoot() ? 'yes' : 'no'}\n` +
       `  Service user: ${getDiagnosticUser()}\n` +
-      `  Root service file: ${existsServiceFile(true) ? 'found' : 'not found'}\n` +
-      `  User service file: ${existsServiceFile(false) ? 'found' : 'not found'}\x1b[0m`,
+      `  Root service file: ${existsServiceFile(true) ? `found at "${getServicePath(true)}"` : 'not found'}\n` +
+      `  User service file: ${existsServiceFile(false) ? `found at "${getServicePath(false)}"` : 'not found'}\x1b[0m`,
   );
   console.log(
     `Usage: mb-service [start|stop|restart|logs|status]\n\n` +
