@@ -24,7 +24,7 @@
 /* oxlint-disable unicorn/no-process-exit */
 /* oxlint-disable no-console */
 
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 
 // Cache the detection once — the runtime can't change mid-process.
@@ -37,6 +37,25 @@ const HAS_BUN_GLOBAL = typeof Bun !== 'undefined';
  */
 export function isBun(): boolean {
   return HAS_BUN_GLOBAL || typeof process?.versions?.bun === 'string';
+}
+
+/**
+ * Checks if Bun is available in the current environment.
+ *
+ * @returns {boolean} True if Bun is available, false otherwise.
+ */
+export function bunAvailable(): boolean {
+  if (isBun()) {
+    return true;
+  }
+  const home = process.env.HOME ?? '';
+  if (home && existsSync(`${home}/.bun/bin/bun`)) return true;
+  try {
+    execFileSync('bun', ['--version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false; // bun not on PATH
+  }
 }
 
 /**
@@ -297,7 +316,7 @@ function createServiceConfig(root: boolean): void {
     `StartLimitBurst=5\n` +
     `[Service]\n` +
     `Type=simple\n` +
-    (isBun() ? `ExecStart=%h/.bun/bin/bun --bun %h/.bun/bin/matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
+    (isBun() ? `ExecStart=%h/.bun/bin/bun --bun run %h/.bun/bin/matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
     `WorkingDirectory=%h\n` +
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +
@@ -321,6 +340,9 @@ function createServiceConfig(root: boolean): void {
     }
     writeFileSync(servicePath, root ? rootConfig : userConfig, { mode: 0o644 });
     console.log(`Service configuration written to ${servicePath} successfully for user ${user}.`);
+    if (!root) {
+      console.warn(`To keep the user service active after logout, run once: sudo loginctl enable-linger ${user}`);
+    }
   } catch (err) {
     console.error(`Failed to write service file: ${String(err)}`);
     process.exit(1);

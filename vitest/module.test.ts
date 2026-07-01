@@ -13,6 +13,7 @@ const fs = await import('node:fs');
 
 vi.mock('node:child_process', () => {
   return {
+    execFileSync: vi.fn(),
     spawnSync: vi.fn(),
   };
 });
@@ -32,8 +33,9 @@ const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
 
 const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-const { main } = await import('../src/module.js');
+const { bunAvailable, main } = await import('../src/module.js');
 
 describe('mb-service main', () => {
   const originalPlatform = process.platform;
@@ -122,6 +124,9 @@ describe('mb-service main', () => {
     process.env = { ...originalEnv, HOME: '/home/testuser', USER: 'testuser' };
     setCommand();
     mockServiceFiles({ root: true, user: false });
+    vi.mocked(child_process.execFileSync).mockImplementation(() => {
+      throw new Error('bun not found');
+    });
     vi.mocked(child_process.spawnSync).mockReturnValue(spawnOk);
     vi.mocked(fs.mkdirSync).mockImplementation(() => {});
     vi.mocked(fs.writeFileSync).mockImplementation(() => {});
@@ -149,6 +154,48 @@ describe('mb-service main', () => {
       process.exit(1);
     }).toThrow('process.exit');
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('detects Bun when running on Bun', () => {
+    setBun(true);
+
+    expect(bunAvailable()).toBe(true);
+
+    expect(fs.existsSync).not.toHaveBeenCalledWith('/home/testuser/.bun/bin/bun');
+    expect(child_process.execFileSync).not.toHaveBeenCalled();
+  });
+
+  it('detects Bun from the user home directory', () => {
+    vi.mocked(fs.existsSync).mockImplementation((path) => path === '/home/testuser/.bun/bin/bun');
+
+    expect(bunAvailable()).toBe(true);
+
+    expect(fs.existsSync).toHaveBeenCalledWith('/home/testuser/.bun/bin/bun');
+    expect(child_process.execFileSync).not.toHaveBeenCalled();
+  });
+
+  it('detects Bun from PATH', () => {
+    vi.mocked(child_process.execFileSync).mockReturnValue(Buffer.from('1.0.0'));
+
+    expect(bunAvailable()).toBe(true);
+
+    expect(child_process.execFileSync).toHaveBeenCalledWith('bun', ['--version'], { stdio: 'ignore' });
+  });
+
+  it('reports Bun as unavailable when it is not running and cannot be found', () => {
+    expect(bunAvailable()).toBe(false);
+
+    expect(fs.existsSync).toHaveBeenCalledWith('/home/testuser/.bun/bin/bun');
+    expect(child_process.execFileSync).toHaveBeenCalledWith('bun', ['--version'], { stdio: 'ignore' });
+  });
+
+  it('reports Bun as unavailable when HOME is missing and Bun is not on PATH', () => {
+    process.env = { USER: 'testuser' };
+
+    expect(bunAvailable()).toBe(false);
+
+    expect(fs.existsSync).not.toHaveBeenCalledWith('/home/testuser/.bun/bin/bun');
+    expect(child_process.execFileSync).toHaveBeenCalledWith('bun', ['--version'], { stdio: 'ignore' });
   });
 
   it('exits if not running on Linux', () => {
@@ -261,6 +308,7 @@ describe('mb-service main', () => {
 
     expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('WantedBy=multi-user.target'), { mode: 0o644 });
     expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('ExecStart=matterbridge --service'), { mode: 0o644 });
+    expect(consoleWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining('enable-linger'));
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['daemon-reload'], { stdio: 'inherit' });
   });
 
@@ -276,6 +324,7 @@ describe('mb-service main', () => {
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('WantedBy=default.target'), { mode: 0o644 });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=matterbridge --service'), { mode: 0o644 });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.not.stringContaining('ExecStart=bun --bun run matterbridge --service'), { mode: 0o644 });
+    expect(consoleWarnSpy).toHaveBeenCalledWith('To keep the user service active after logout, run once: sudo loginctl enable-linger testuser');
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
   });
 
@@ -289,7 +338,10 @@ describe('mb-service main', () => {
     main();
 
     expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
-    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=%h/.bun/bin/bun --bun %h/.bun/bin/matterbridge --service'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=%h/.bun/bin/bun --bun run %h/.bun/bin/matterbridge --service'), {
+      mode: 0o644,
+    });
+    expect(consoleWarnSpy).toHaveBeenCalledWith('To keep the user service active after logout, run once: sudo loginctl enable-linger testuser');
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
   });
 

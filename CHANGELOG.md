@@ -36,6 +36,7 @@ If you like this project and find it useful, please consider giving it a star on
 - [service]: Check for `package.json` before running package manager `link` and `unlink`.
 - [service]: Run package manager `link` and `unlink` commands for development links.
 - [service]: Require root privileges for npm `link` and `unlink` commands on Linux.
+- [service]: Show a `loginctl enable-linger` hint after creating a user-owned service.
 
 ### Changed
 
