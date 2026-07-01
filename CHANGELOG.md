@@ -30,6 +30,8 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [2.0.1] - 2026-07-01
 
+- [help]: Update usage instructions in help output to include additional commands.
+
 ### Added
 
 - [service]: Add path of service file.

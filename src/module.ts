@@ -295,7 +295,7 @@ function printHelp(): void {
       `  User service file: ${existsServiceFile(false) ? `found at "${getServicePath(false)}"` : 'not found'}\x1b[0m`,
   );
   console.log(
-    `Usage: mb-service [start|stop|restart|logs|status]\n\n` +
+    `Usage: mb-service [create|start|stop|restart|enable|disable|install|uninstall|add|remove|link|unlink|logs|status]\n\n` +
       `  Please provide a command:\n` +
       `    start                            start the matterbridge service\n` +
       `    stop                             stop the matterbridge service\n` +
