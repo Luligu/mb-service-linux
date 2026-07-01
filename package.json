@@ -61,11 +61,11 @@
     "CHANGELOG.md"
   ],
   "automator": {
+    "node": true,
+    "bun": true,
     "jest": false,
     "vitest": true,
     "buntest": false,
-    "node": true,
-    "bun": true,
     "native": true,
     "git": false,
     "version": false,
@@ -104,8 +104,8 @@
   },
   "devDependencies": {
     "@types/bun": "1.3.14",
-    "@types/node": "26.0.1",
-    "@typescript/native-preview": "7.0.0-dev.20260630.1",
+    "@types/node": "26.1.0",
+    "@typescript/native-preview": "7.0.0-dev.20260701.1",
     "@vitest/coverage-v8": "4.1.9",
     "oxfmt": "0.57.0",
     "oxlint": "1.72.0",
