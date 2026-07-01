@@ -133,7 +133,7 @@ export function main(): void {
       'Matterbridge service file does not exist.\n' +
         'Run "sudo mb-service create" if you want to create a root-owned service file.\n' +
         'Run "mb-service create" without sudo to create a user-owned service file.\n' +
-        'Run "bunx mb-service create" to create a user-owned service file when using Bun.',
+        'Run "bun --bun run mb-service create" to create a user-owned service file when using Bun.',
     );
     return;
   }
@@ -279,7 +279,7 @@ function createServiceConfig(root: boolean): void {
     `[Service]\n` +
     `Type=simple\n` +
     `ExecStart=matterbridge --service\n` +
-    `WorkingDirectory=~\n` +
+    `WorkingDirectory=%h\n` +
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +
     `Restart=always\n` +
@@ -297,8 +297,8 @@ function createServiceConfig(root: boolean): void {
     `StartLimitBurst=5\n` +
     `[Service]\n` +
     `Type=simple\n` +
-    (isBun() ? `ExecStart=bun --bun run matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
-    `WorkingDirectory=~\n` +
+    (isBun() ? `ExecStart=%h/.bun/bin/bun --bun %h/.bun/bin/matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
+    `WorkingDirectory=%h\n` +
     `StandardOutput=inherit\n` +
     `StandardError=inherit\n` +
     `Restart=always\n` +
@@ -428,6 +428,10 @@ function uninstallGlobalPackage(pkg: string): void {
  * Link the current package using the active package manager.
  */
 function linkPackage(): void {
+  if (!existsSync('package.json')) {
+    console.error('Cannot link package: package.json does not exist in the current directory.');
+    return;
+  }
   if (!isBun() && !isRoot()) {
     console.error('Linking global packages requires root privileges. Please run this command with sudo.');
     return;
@@ -442,6 +446,10 @@ function linkPackage(): void {
  * Unlink the current package using the active package manager.
  */
 function unlinkPackage(): void {
+  if (!existsSync('package.json')) {
+    console.error('Cannot unlink package: package.json does not exist in the current directory.');
+    return;
+  }
   if (!isBun() && !isRoot()) {
     console.error('Unlinking global packages requires root privileges. Please run this command with sudo.');
     return;

@@ -33,14 +33,15 @@ If you like this project and find it useful, please consider giving it a star on
 - [bun]: Add Bun runtime detection and Bun global plugin install/uninstall support.
 - [service]: Create the user systemd directory before writing a user-owned service file.
 - [service]: Detect conflicting root-owned and user-owned service files before managing the service.
+- [service]: Check for `package.json` before running package manager `link` and `unlink`.
+- [service]: Run package manager `link` and `unlink` commands for development links.
+- [service]: Require root privileges for npm `link` and `unlink` commands on Linux.
 
 ### Changed
 
 - [service]: Use `systemctl --user` and `journalctl --user` when managing a user-owned service.
 - [service]: Require either a root-owned or user-owned service file before running service management commands.
 - [readme]: Document root-owned, user-owned, and Bun service setup flows.
-- [service]: Run package manager `link` and `unlink` commands for development links.
-- [service]: Require root privileges for npm `link` and `unlink` commands on Linux.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 

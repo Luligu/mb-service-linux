@@ -75,15 +75,17 @@ describe('mb-service main', () => {
    * Mock the service file state.
    *
    * @param {object} options Service file options.
+   * @param {boolean} [options.packageJson] Whether package.json exists.
    * @param {boolean} options.root Whether the root-owned service file exists.
    * @param {boolean} options.user Whether the user-owned service file exists.
    * @returns {void}
    */
-  function mockServiceFiles(options: { root: boolean; user: boolean }): void {
+  function mockServiceFiles(options: { packageJson?: boolean; root: boolean; user: boolean }): void {
     vi.mocked(fs.existsSync).mockImplementation((path) => {
       if (path === '/.dockerenv' || path === '/run/.containerenv') return false;
       if (path === rootServicePath) return options.root;
       if (path === userServicePath) return options.user;
+      if (path === 'package.json') return options.packageJson ?? true;
       return false;
     });
   }
@@ -287,7 +289,7 @@ describe('mb-service main', () => {
     main();
 
     expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
-    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=bun --bun run matterbridge --service'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=%h/.bun/bin/bun --bun %h/.bun/bin/matterbridge --service'), { mode: 0o644 });
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
   });
 
@@ -601,6 +603,17 @@ describe('mb-service main', () => {
     expect(child_process.spawnSync).toHaveBeenCalledWith('npm', ['link'], { stdio: 'inherit' });
   });
 
+  it('does not link with npm when package.json is missing', () => {
+    setPlatform('linux');
+    mockServiceFiles({ packageJson: false, root: true, user: false });
+    setCommand('link');
+
+    main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Cannot link package: package.json does not exist in the current directory.');
+  });
+
   it('does not link the current package without root on Node.js', () => {
     setPlatform('linux');
     setRoot(false);
@@ -625,6 +638,19 @@ describe('mb-service main', () => {
     expect(child_process.spawnSync).toHaveBeenCalledWith('bun', ['link'], { stdio: 'inherit' });
   });
 
+  it('does not link with Bun when package.json is missing', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ packageJson: false, root: false, user: true });
+    setCommand('link');
+
+    main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Cannot link package: package.json does not exist in the current directory.');
+  });
+
   it('reports link command errors', () => {
     setPlatform('linux');
     setCommand('link');
@@ -642,6 +668,17 @@ describe('mb-service main', () => {
     main();
 
     expect(child_process.spawnSync).toHaveBeenCalledWith('npm', ['unlink'], { stdio: 'inherit' });
+  });
+
+  it('does not unlink with npm when package.json is missing', () => {
+    setPlatform('linux');
+    mockServiceFiles({ packageJson: false, root: true, user: false });
+    setCommand('unlink');
+
+    main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Cannot unlink package: package.json does not exist in the current directory.');
   });
 
   it('does not unlink the current package without root on Node.js', () => {
@@ -666,6 +703,19 @@ describe('mb-service main', () => {
     main();
 
     expect(child_process.spawnSync).toHaveBeenCalledWith('bun', ['unlink'], { stdio: 'inherit' });
+  });
+
+  it('does not unlink with Bun when package.json is missing', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ packageJson: false, root: false, user: true });
+    setCommand('unlink');
+
+    main();
+
+    expect(child_process.spawnSync).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Cannot unlink package: package.json does not exist in the current directory.');
   });
 
   it('reports unlink command errors', () => {
