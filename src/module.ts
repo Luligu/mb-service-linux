@@ -119,9 +119,9 @@ export function main(): void {
   // Exit if both root-owned and user-owned service files exist
   if (existsServiceFile(true) && existsServiceFile(false)) {
     console.error(
-      'Both root-owned and user-owned Matterbridge service files exist. ' +
-        'Please remove one of them to avoid conflicts. ' +
-        'Run "sudo rm /etc/systemd/system/matterbridge.service" to remove the root-owned service file. ' +
+      'Both root-owned and user-owned Matterbridge service files exist.\n' +
+        'Please remove one of them to avoid conflicts.\n' +
+        'Run "sudo rm /etc/systemd/system/matterbridge.service" to remove the root-owned service file.\n' +
         'Run "rm ~/.config/systemd/user/matterbridge.service" to remove the user-owned service file.',
     );
     return;
@@ -130,9 +130,9 @@ export function main(): void {
   // Exit if the service file does not exist and the command is not 'create'
   if (command !== 'create' && !existsServiceFile(true) && !existsServiceFile(false)) {
     console.error(
-      'Matterbridge service file does not exist. ' +
-        'Run "sudo mb-service create" if you want to create a root-owned service file. ' +
-        'Run "mb-service create" without sudo to create a user-owned service file.' +
+      'Matterbridge service file does not exist.\n' +
+        'Run "sudo mb-service create" if you want to create a root-owned service file.\n' +
+        'Run "mb-service create" without sudo to create a user-owned service file.\n' +
         'Run "bunx mb-service create" to create a user-owned service file when using Bun.',
     );
     return;
