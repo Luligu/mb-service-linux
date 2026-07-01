@@ -63,6 +63,7 @@
   "automator": {
     "jest": false,
     "vitest": true,
+    "bun": false,
     "native": true,
     "git": false,
     "version": false,
@@ -86,10 +87,10 @@
     "typecheck": "tsgo --project tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "test:verbose": "npm run test -- --reporter verbose",
+    "test:verbose": "vitest run --reporter verbose",
     "test:coverage": "vitest run --coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.lines=100 --coverage.thresholds.functions=100",
     "lint": "oxlint --disable-nested-config",
-    "lint:fix": "oxlint --fix --disable-nested-config",
+    "lint:fix": "oxlint --disable-nested-config --fix",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "reset": "npm run deepClean && npm run softReset",
@@ -100,12 +101,12 @@
     "prepublishOnly": "npm run cleanBuildProduction && npm pkg delete devDependencies scripts automator && node scripts/prepublish-clean.mjs && npm install --no-fund --no-audit --omit=dev && npm shrinkwrap --omit=dev"
   },
   "devDependencies": {
-    "@types/node": "26.0.0",
-    "@typescript/native-preview": "7.0.0-dev.20260622.1",
+    "@types/node": "26.0.1",
+    "@typescript/native-preview": "7.0.0-dev.20260630.1",
     "@vitest/coverage-v8": "4.1.9",
-    "oxfmt": "0.56.0",
-    "oxlint": "1.71.0",
-    "oxlint-tsgolint": "0.23.0",
+    "oxfmt": "0.57.0",
+    "oxlint": "1.72.0",
+    "oxlint-tsgolint": "0.24.0",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   }
