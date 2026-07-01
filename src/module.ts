@@ -29,6 +29,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 
 // Cache the detection once — the runtime can't change mid-process.
 const HAS_BUN_GLOBAL = typeof Bun !== 'undefined';
+const MB_SERVICE_VERSION = '2.0.0';
 
 /**
  * Checks if the current runtime environment is Bun.
@@ -102,6 +103,15 @@ function getServicePath(root: boolean): string {
  */
 function getUserServiceDirectory(): string {
   return `${process.env.HOME}/.config/systemd/user`;
+}
+
+/**
+ * Gets the user name shown in diagnostics.
+ *
+ * @returns {string} The detected user name or unknown.
+ */
+function getDiagnosticUser(): string {
+  return process.env.SUDO_USER ?? process.env.USER ?? 'unknown';
 }
 
 /**
@@ -259,7 +269,18 @@ export function main(): void {
  * Prints the help screen for mb-service, similar to hb-service for Homebridge.
  */
 function printHelp(): void {
-  console.log(`\x1b[90mDetected: isBun=${isBun()} isRoot=${isRoot()} rootServiceFile=${existsServiceFile(true)} userServiceFile=${existsServiceFile(false)}\x1b[0m`);
+  console.log(
+    `\x1b[90mEnvironment:\n` +
+      `  mb-service version: ${MB_SERVICE_VERSION}\n` +
+      `  Runtime: ${isBun() ? 'Bun' : 'Node.js'}\n` +
+      `  Node version: ${process.version}${isBun() ? ' (reported by Bun for Node.js compatibility)' : ''}\n` +
+      `  Bun available: ${bunAvailable() ? 'yes' : 'no'}\n` +
+      `  Bun version: ${process.versions.bun ?? 'not running'}\n` +
+      `  Running as root: ${isRoot() ? 'yes' : 'no'}\n` +
+      `  Service user: ${getDiagnosticUser()}\n` +
+      `  Root service file: ${existsServiceFile(true) ? 'found' : 'not found'}\n` +
+      `  User service file: ${existsServiceFile(false) ? 'found' : 'not found'}\x1b[0m`,
+  );
   console.log(
     `Usage: mb-service [start|stop|restart|logs|status]\n\n` +
       `  Please provide a command:\n` +

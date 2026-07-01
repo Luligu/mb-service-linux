@@ -283,8 +283,51 @@ describe('mb-service main', () => {
 
     main();
 
-    expect(consoleLogSpy).toHaveBeenCalledWith('\x1b[90mDetected: isBun=false isRoot=true rootServiceFile=true userServiceFile=false\x1b[0m');
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      '\x1b[90mEnvironment:\n' +
+        '  mb-service version: 2.0.0\n' +
+        '  Runtime: Node.js\n' +
+        `  Node version: ${process.version}\n` +
+        '  Bun available: no\n' +
+        '  Bun version: not running\n' +
+        '  Running as root: yes\n' +
+        '  Service user: testuser\n' +
+        '  Root service file: found\n' +
+        '  User service file: not found\x1b[0m',
+    );
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Usage: mb-service'));
+  });
+
+  it('prints Bun user-service environment details before help', () => {
+    setPlatform('linux');
+    setBun(true);
+    setRoot(false);
+    mockServiceFiles({ root: false, user: true });
+
+    main();
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      '\x1b[90mEnvironment:\n' +
+        '  mb-service version: 2.0.0\n' +
+        '  Runtime: Bun\n' +
+        `  Node version: ${process.version} (reported by Bun for Node.js compatibility)\n` +
+        '  Bun available: yes\n' +
+        '  Bun version: 1.0.0\n' +
+        '  Running as root: no\n' +
+        '  Service user: testuser\n' +
+        '  Root service file: not found\n' +
+        '  User service file: found\x1b[0m',
+    );
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Usage: mb-service'));
+  });
+
+  it('prints unknown when the environment user cannot be detected', () => {
+    setPlatform('linux');
+    process.env = { HOME: '/home/testuser' };
+
+    main();
+
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Service user: unknown'));
   });
 
   it('does nothing for an unknown command when preflight checks pass', () => {
