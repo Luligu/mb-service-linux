@@ -83,7 +83,7 @@ mb-service enable
 mb-service start
 ```
 
-When using Bun, create and manage the user-owned service without sudo:
+When using Bun, create and manage the user-owned service without sudo (--bun is mandatory if you have also Node.js installed):
 
 ```bash
 bunx --bun mb-service create

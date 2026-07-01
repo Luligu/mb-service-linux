@@ -25,11 +25,24 @@
 /* oxlint-disable no-console */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 // Cache the detection once — the runtime can't change mid-process.
 const HAS_BUN_GLOBAL = typeof Bun !== 'undefined';
-const MB_SERVICE_VERSION = '2.0.0';
+const MB_SERVICE_VERSION = getPackageVersion(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as unknown);
+
+/**
+ * Gets the package version from parsed package metadata.
+ *
+ * @param {unknown} packageJson - Parsed package.json contents.
+ * @returns {string} The package version.
+ */
+function getPackageVersion(packageJson: unknown): string {
+  if (typeof packageJson !== 'object' || packageJson === null || !('version' in packageJson) || typeof packageJson.version !== 'string') {
+    throw new Error('Could not determine mb-service version from package.json.');
+  }
+  return packageJson.version;
+}
 
 /**
  * Checks if the current runtime environment is Bun.

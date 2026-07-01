@@ -6,6 +6,7 @@ vi.mock('node:fs', () => {
   return {
     existsSync: vi.fn(),
     mkdirSync: vi.fn(),
+    readFileSync: vi.fn(() => JSON.stringify({ version: '2.0.1' })),
     writeFileSync: vi.fn(),
   };
 });
@@ -26,6 +27,7 @@ const spawnErr = { error: new Error('Test error') } as SpawnResult;
 const rootServicePath = '/etc/systemd/system/matterbridge.service';
 const userServiceDirectory = '/home/testuser/.config/systemd/user';
 const userServicePath = `${userServiceDirectory}/matterbridge.service`;
+const packageVersion = '2.0.1';
 
 const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
   throw new Error('process.exit');
@@ -198,6 +200,13 @@ describe('mb-service main', () => {
     expect(child_process.execFileSync).toHaveBeenCalledWith('bun', ['--version'], { stdio: 'ignore' });
   });
 
+  it('errors when package.json does not include a version string', async () => {
+    const invalidModulePath = '../src/module.js?invalid-package-version';
+    vi.mocked(fs.readFileSync).mockReturnValueOnce(JSON.stringify({ name: 'mb-service-linux' }));
+
+    await expect(import(invalidModulePath)).rejects.toThrow('Could not determine mb-service version from package.json.');
+  });
+
   it('exits if not running on Linux', () => {
     setPlatform('win32');
 
@@ -285,7 +294,7 @@ describe('mb-service main', () => {
 
     expect(consoleLogSpy).toHaveBeenCalledWith(
       '\x1b[90mEnvironment:\n' +
-        '  mb-service version: 2.0.0\n' +
+        `  mb-service version: ${packageVersion}\n` +
         '  Runtime: Node.js\n' +
         `  Node version: ${process.version}\n` +
         '  Bun available: no\n' +
@@ -308,7 +317,7 @@ describe('mb-service main', () => {
 
     expect(consoleLogSpy).toHaveBeenCalledWith(
       '\x1b[90mEnvironment:\n' +
-        '  mb-service version: 2.0.0\n' +
+        `  mb-service version: ${packageVersion}\n` +
         '  Runtime: Bun\n' +
         `  Node version: ${process.version} (reported by Bun for Node.js compatibility)\n` +
         '  Bun available: yes\n' +
