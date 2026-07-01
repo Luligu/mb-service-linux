@@ -240,6 +240,7 @@ export function main(): void {
  * Prints the help screen for mb-service, similar to hb-service for Homebridge.
  */
 function printHelp(): void {
+  console.log(`\x1b[90mDetected: isBun=${isBun()} isRoot=${isRoot()} rootServiceFile=${existsServiceFile(true)} userServiceFile=${existsServiceFile(false)}\x1b[0m`);
   console.log(
     `Usage: mb-service [start|stop|restart|logs|status]\n\n` +
       `  Please provide a command:\n` +

@@ -234,6 +234,7 @@ describe('mb-service main', () => {
 
     main();
 
+    expect(consoleLogSpy).toHaveBeenCalledWith('\x1b[90mDetected: isBun=false isRoot=true rootServiceFile=true userServiceFile=false\x1b[0m');
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Usage: mb-service'));
   });
 
