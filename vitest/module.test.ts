@@ -381,7 +381,7 @@ describe('mb-service main', () => {
     main();
 
     expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
-    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=%h/.bun/bin/bun --bun run %h/.bun/bin/matterbridge --service'), {
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=%h/.bun/bin/bun --bun %h/.bun/bin/matterbridge --service'), {
       mode: 0o644,
     });
     expect(consoleWarnSpy).toHaveBeenCalledWith('To keep the user service active after logout, run once: sudo loginctl enable-linger testuser');

@@ -312,8 +312,8 @@ function createServiceConfig(root: boolean): void {
   const rootConfig =
     `[Unit]\n` +
     `Description=matterbridge\n` +
-    `After=network.target\n` +
-    `Wants=network.target\n` +
+    `After=network-online.target\n` +
+    `Wants=network-online.target\n` +
     `StartLimitIntervalSec=60\n` +
     `StartLimitBurst=5\n` +
     `\n` +
@@ -337,8 +337,8 @@ function createServiceConfig(root: boolean): void {
   const userConfig =
     `[Unit]\n` +
     `Description=matterbridge\n` +
-    `After=network.target\n` +
-    `Wants=network.target\n` +
+    `After=network-online.target\n` +
+    `Wants=network-online.target\n` +
     `StartLimitIntervalSec=60\n` +
     `StartLimitBurst=5\n` +
     `\n` +
@@ -349,7 +349,7 @@ function createServiceConfig(root: boolean): void {
     `# Absolute paths — systemd has no shell PATH. %h = the user's home.\n` +
     `# --bun forces the Bun runtime even though the matterbridge bin has a node shebang,\n` +
     `# and shims any \`node\` the process spawns to Bun as well.\n` +
-    (isBun() ? `ExecStart=%h/.bun/bin/bun --bun run %h/.bun/bin/matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
+    (isBun() ? `ExecStart=%h/.bun/bin/bun --bun %h/.bun/bin/matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
     `WorkingDirectory=%h\n` +
     `# Logs go to the journal (should be persistent). Read with: journalctl --user -u matterbridge -n 1000 -f --output cat\n` +
     `StandardOutput=inherit\n` +

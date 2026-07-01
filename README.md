@@ -86,7 +86,7 @@ mb-service start
 When using Bun, create and manage the user-owned service without sudo:
 
 ```bash
-bunx mb-service create
-bunx mb-service enable
-bunx mb-service start
+bunx --bun mb-service create
+bunx --bun mb-service enable
+bunx --bun mb-service start
 ```
