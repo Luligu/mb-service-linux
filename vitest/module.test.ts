@@ -358,10 +358,35 @@ describe('mb-service main', () => {
 
     main();
 
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/home/testuser/Matterbridge', { recursive: true });
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/home/testuser/.matterbridge', { recursive: true });
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/home/testuser/.mattercert', { recursive: true });
+    expect(child_process.spawnSync).toHaveBeenCalledWith(
+      'chown',
+      ['-R', 'testuser:testuser', '/home/testuser/Matterbridge', '/home/testuser/.matterbridge', '/home/testuser/.mattercert'],
+      { stdio: 'inherit' },
+    );
     expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('WantedBy=multi-user.target'), { mode: 0o644 });
     expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('ExecStart=matterbridge --service'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('WorkingDirectory=/home/testuser/Matterbridge'), { mode: 0o644 });
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(expect.stringContaining('enable-linger'));
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['daemon-reload'], { stdio: 'inherit' });
+  });
+
+  it('creates a root-owned service file in the root user home when the service user is root', () => {
+    setPlatform('linux');
+    setRoot(true);
+    mockServiceFiles({ root: false, user: false });
+    process.env = { ...originalEnv, HOME: '/root', USER: 'root' };
+    setCommand('create');
+
+    main();
+
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/root/Matterbridge', { recursive: true });
+    expect(child_process.spawnSync).toHaveBeenCalledWith('chown', ['-R', 'root:root', '/root/Matterbridge', '/root/.matterbridge', '/root/.mattercert'], {
+      stdio: 'inherit',
+    });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(rootServicePath, expect.stringContaining('WorkingDirectory=/root/Matterbridge'), { mode: 0o644 });
   });
 
   it('creates a user-owned service file and its directory', () => {
@@ -372,9 +397,14 @@ describe('mb-service main', () => {
 
     main();
 
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/home/testuser/Matterbridge', { recursive: true });
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/home/testuser/.matterbridge', { recursive: true });
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/home/testuser/.mattercert', { recursive: true });
+    expect(child_process.spawnSync).not.toHaveBeenCalledWith('chown', expect.any(Array), expect.any(Object));
     expect(fs.mkdirSync).toHaveBeenCalledWith(userServiceDirectory, { recursive: true });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('WantedBy=default.target'), { mode: 0o644 });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('ExecStart=matterbridge --service'), { mode: 0o644 });
+    expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.stringContaining('WorkingDirectory=/home/testuser/Matterbridge'), { mode: 0o644 });
     expect(fs.writeFileSync).toHaveBeenCalledWith(userServicePath, expect.not.stringContaining('ExecStart=bun --bun run matterbridge --service'), { mode: 0o644 });
     expect(consoleWarnSpy).toHaveBeenCalledWith('To keep the user service active after logout, run once: sudo loginctl enable-linger testuser');
     expect(child_process.spawnSync).toHaveBeenCalledWith('systemctl', ['--user', 'daemon-reload'], { stdio: 'inherit' });
@@ -419,6 +449,20 @@ describe('mb-service main', () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Could not determine the user to run the service.'));
   });
 
+  it('exits when creating the Matterbridge directories fails', () => {
+    setPlatform('linux');
+    mockServiceFiles({ root: false, user: false });
+    setCommand('create');
+    vi.mocked(fs.mkdirSync).mockImplementation(() => {
+      throw new Error('Test error');
+    });
+
+    expect(() => {
+      main();
+    }).toThrow('process.exit');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to create the Matterbridge directories:'));
+  });
+
   it('exits when writing the service file fails', () => {
     setPlatform('linux');
     mockServiceFiles({ root: false, user: false });
@@ -437,8 +481,11 @@ describe('mb-service main', () => {
     setPlatform('linux');
     mockServiceFiles({ root: false, user: false });
     setCommand('create');
-    vi.mocked(child_process.spawnSync).mockImplementation(() => {
-      throw new Error('Test error');
+    vi.mocked(child_process.spawnSync).mockImplementation((command) => {
+      if (command === 'systemctl') {
+        throw new Error('Test error');
+      }
+      return spawnOk;
     });
 
     expect(() => {

@@ -119,6 +119,16 @@ function getUserServiceDirectory(): string {
 }
 
 /**
+ * Gets the home directory of the given user.
+ *
+ * @param {string} user - The user name the service runs as.
+ * @returns {string} The home directory of the user.
+ */
+function getUserHomeDirectory(user: string): string {
+  return user === 'root' ? '/root' : `/home/${user}`;
+}
+
+/**
  * Gets the user name shown in diagnostics.
  *
  * @returns {string} The detected user name or unknown.
@@ -322,6 +332,12 @@ function printHelp(): void {
 function createServiceConfig(root: boolean): void {
   // oxlint-disable-next-line typescript/prefer-nullish-coalescing -- an empty SUDO_USER must fall through to USER
   const user = process.env.SUDO_USER || process.env.USER;
+  if (!user) {
+    console.error('Could not determine the user to run the service. Please set SUDO_USER or USER environment variable.');
+    return;
+  }
+  // Literal home of the service user: %h is unreliable in a system unit (it resolves to the manager's home, not User=).
+  const home = getUserHomeDirectory(user);
   const rootConfig =
     `[Unit]\n` +
     `Description=matterbridge\n` +
@@ -335,10 +351,11 @@ function createServiceConfig(root: boolean): void {
     `# PATH for any child process Matterbridge/plugins spawn (bun/node/npm lookups).\n` +
     `Environment="PATH=/usr/local/bin:/usr/bin:/bin"\n` +
     `ExecStart=matterbridge --service\n` +
-    `WorkingDirectory=%h\n` +
+    `WorkingDirectory=${home}/Matterbridge\n` +
     `# Logs go to the journal (should be persistent). Read with: journalctl -u matterbridge -n 1000 -f --output cat\n` +
-    `StandardOutput=inherit\n` +
-    `StandardError=inherit\n` +
+    `StandardOutput=journal\n` +
+    `StandardError=journal\n` +
+    `SyslogIdentifier=matterbridge\n` +
     `Restart=always\n` +
     `RestartSec=5\n` +
     `TimeoutStopSec=60\n` +
@@ -363,10 +380,11 @@ function createServiceConfig(root: boolean): void {
     `# --bun forces the Bun runtime even though the matterbridge bin has a node shebang,\n` +
     `# and shims any \`node\` the process spawns to Bun as well.\n` +
     (isBun() ? `ExecStart=%h/.bun/bin/bun --bun %h/.bun/bin/matterbridge --service\n` : `ExecStart=matterbridge --service\n`) +
-    `WorkingDirectory=%h\n` +
+    `WorkingDirectory=${home}/Matterbridge\n` +
     `# Logs go to the journal (should be persistent). Read with: journalctl --user -u matterbridge -n 1000 -f --output cat\n` +
-    `StandardOutput=inherit\n` +
-    `StandardError=inherit\n` +
+    `StandardOutput=journal\n` +
+    `StandardError=journal\n` +
+    `SyslogIdentifier=matterbridge\n` +
     `Restart=always\n` +
     `RestartSec=5\n` +
     `TimeoutStopSec=60\n` +
@@ -375,13 +393,26 @@ function createServiceConfig(root: boolean): void {
     `WantedBy=default.target\n`;
   const servicePath = getServicePath(root);
 
-  if (!user) {
-    console.error('Could not determine the user to run the service. Please set SUDO_USER or USER environment variable.');
-    return;
-  }
   if (existsSync(servicePath)) {
     console.log(`Service configuration already exists at ${servicePath}. No changes made.`);
     return;
+  }
+  // Matterbridge needs its directories to exist before systemd starts the service (WorkingDirectory must exist).
+  const matterbridgeDirectories = [`${home}/Matterbridge`, `${home}/.matterbridge`, `${home}/.mattercert`];
+  try {
+    for (const directory of matterbridgeDirectories) {
+      mkdirSync(directory, { recursive: true });
+    }
+    if (root) {
+      // Under sudo the directories are created by root: hand them back to the service user.
+      const chown = spawnSync('chown', ['-R', `${user}:${user}`, ...matterbridgeDirectories], { stdio: 'inherit' });
+      if (chown.error) {
+        console.error('Failed to change the ownership of the Matterbridge directories:', chown.error.message);
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to create the Matterbridge directories: ${String(err)}`);
+    process.exit(1);
   }
   try {
     if (!root) {

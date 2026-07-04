@@ -24,19 +24,33 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [2.0.2] - Dev branch
+## [2.0.2] - 2026-07-04
+
+### Added
+
+- [service]: Create the Matterbridge directories (~/Matterbridge, ~/.matterbridge, ~/.mattercert) on create and change their ownership to the service user.
+- [service]: Add SyslogIdentifier to the service file.
+
+### Changed
+
+- [service]: Set WorkingDirectory to the Matterbridge directory in the home of the service user.
+- [service]: Send stdout and stderr to the journal in the service file.
+- [package]: Update dependencies.
+- [package]: Upgrade package.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [2.0.1] - 2026-07-01
-
-- [help]: Update usage instructions in help output to include additional commands.
 
 ### Added
 
 - [service]: Add path of service file.
 - [service]: Add Environment PATH to the service file.
 - [service]: Add network-online.target to the service file.
+
+### Changed
+
+- [help]: Update usage instructions in help output to include additional commands.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
