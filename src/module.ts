@@ -1,6 +1,6 @@
 /**
+ * @file src/module.ts
  * @description This file contains the main entry point for the mb-service command.
- * @file module.ts
  * @author Luca Liguori
  * @created 2024-07-14
  * @version 1.1.3

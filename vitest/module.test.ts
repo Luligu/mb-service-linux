@@ -1,4 +1,8 @@
-// vitest/module.test.ts
+/**
+ * @file vitest/module.test.ts
+ * @description This file contains the tests for the mb-service module.
+ * @author Luca Liguori
+ */
 
 /* oxlint-disable no-console */
 

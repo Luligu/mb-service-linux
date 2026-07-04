@@ -26,6 +26,10 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [2.0.3] - Dev branch
 
+### Changed
+
+- [readme]: Add explanation for --bun parameter.
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [2.0.2] - 2026-07-04
