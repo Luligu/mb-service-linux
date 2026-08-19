@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-echo "Welcome to Matterbridge Plugin Dev Container (post-start.sh)"
+echo "Welcome to Matterbridge Dev Container (post-start.sh)"
 DISTRO=$(awk -F= '/^PRETTY_NAME=/{gsub(/"/, "", $2); print $2}' /etc/os-release)
 CODENAME=$(awk -F= '/^VERSION_CODENAME=/{print $2}' /etc/os-release)
 echo "Distro: $DISTRO ($CODENAME)"
@@ -20,17 +20,13 @@ echo "Bun version: $(bun -v)"
 echo "Bun global cache: ${HOME}/.bun/install/cache"
 echo ""
 
-echo "1.post-start - Installing the plugin dependencies..."
+echo "1.post-start - Installing the project dependencies..."
 bun install
 
-echo "2.post-start - Linking Matterbridge..."
-if ! bun link matterbridge; then
-	echo "Retrying link with elevated permissions..."
-	sudo bun link matterbridge
-	sudo chown -R bun:bun ./node_modules
-fi
+echo "2.post-start - Setting node_modules permissions..."
+sudo chown -R bun:bun ./node_modules
 
-echo "3.post-start - Building the plugin..."
+echo "3.post-start - Building the project..."
 bun run build
 
 echo "4.post-start - Post start setup completed!"

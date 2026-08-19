@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-echo "Welcome to Matterbridge Plugin Dev Container (initialize.sh)"
+echo "Welcome to Matterbridge Dev Container (initialize.sh)"
 echo ""
 
 echo "1.initialize - Creating the Matterbridge Docker network..."
