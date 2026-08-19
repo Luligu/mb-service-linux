@@ -12,7 +12,7 @@
     "TZ": "${localEnv:TZ}"
   },
   // Both the node and bun base images already use UID/GID 1000. Disabling the UID update avoids
-  // VS Code creating a workspace-derived vsc-matterbridge-test-* image shared by both variants.
+  // VS Code creating a workspace-derived vsc-* image shared by both variants.
   "updateRemoteUserUID": false,
   // Use the non-root bun user (passwordless sudo in this image)
   "remoteUser": "bun",
@@ -30,9 +30,9 @@
   ],
   // Set up the Docker environment (runs on the host before the container starts)
   "initializeCommand": "bash .devcontainer/bun/initialize.sh",
-  // On create, prepare the directories, install and link the dev of matterbridge and install and build the plugin (runs inside the container)
+  // On create, prepare the directories, install and build the project (runs inside the container)
   "postCreateCommand": "bash .devcontainer/bun/post-create.sh",
-  // On start, install and build the plugin (runs inside the container)
+  // On start, install and build the project (runs inside the container)
   "postStartCommand": "bash .devcontainer/bun/post-start.sh",
   "runArgs": [
     // Give the Docker container the same name as the repository (must be unique on host)
