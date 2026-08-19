@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# .devcontainer/initialize.sh v.1.2.0
+# .devcontainer/node/initialize.sh v.2.0.0
 
 # This script runs on the host before the Dev Container is created to set up the Docker environment.
 
@@ -12,7 +12,10 @@ echo ""
 echo "1.initialize - Creating the Matterbridge Docker network..."
 docker network inspect matterbridge >/dev/null 2>&1 || docker network create matterbridge
 
-echo "2.initialize - Pulling the base image..."
-docker pull node:24-trixie-slim
+echo "2.initialize - Pulling the node dev container image..."
+docker pull luligu/matterbridge:node-dev-container
 
-echo "3.initialize - Initialization completed!"
+echo "3.initialize - Setting script permissions..."
+chmod +x .devcontainer/node/*.sh
+
+echo "4.initialize - Initialization completed!"
