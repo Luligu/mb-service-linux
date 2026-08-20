@@ -21,7 +21,9 @@ echo "Bun global cache: ${HOME}/.bun/install/cache"
 echo ""
 
 echo "1.post-start - Installing the project dependencies..."
+[ -f package-lock.json ] && mv package-lock.json package-lock.json.bak || true
 bun install
+[ -f package-lock.json.bak ] && mv package-lock.json.bak package-lock.json || true
 
 echo "2.post-start - Setting node_modules permissions..."
 sudo chown -R bun:bun ./node_modules

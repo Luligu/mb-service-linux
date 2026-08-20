@@ -21,13 +21,15 @@ echo "Bun global cache: ${HOME}/.bun/install/cache"
 echo ""
 
 echo "1.post-create - Creating directories..."
-sudo mkdir -p /home/bun/.claude /home/bun/.codex /home/bun/.agents /home/bun/.npm /home/bun/.bash-cache /home/bun/.bun/install/cache
+sudo mkdir -p /home/bun/.claude /home/bun/.codex /home/bun/.agents /home/bun/.bash-cache /home/bun/.npm /home/bun/.bun/install/cache
 
 echo "2.post-create - Setting permissions..."
-sudo chown -R bun:bun /home/bun/.claude /home/bun/.codex /home/bun/.agents /home/bun/.npm /home/bun/.bash-cache /home/bun/.bun ./node_modules
+sudo chown -R bun:bun . /home/bun/.claude /home/bun/.codex /home/bun/.agents /home/bun/.bash-cache /home/bun/.npm /home/bun/.bun
 
 echo "3.post-create - Installing the project dependencies..."
+[ -f package-lock.json ] && mv package-lock.json package-lock.json.bak || true
 bun install
+[ -f package-lock.json.bak ] && mv package-lock.json.bak package-lock.json || true
 
 echo "4.post-create - Building the project..."
 bun run build

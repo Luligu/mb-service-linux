@@ -22,10 +22,10 @@ echo "Npm cache: $(npm config get cache)"
 echo ""
 
 echo "1.post-create - Creating directories..."
-sudo mkdir -p /home/node/.claude /home/node/.codex /home/node/.agents /home/node/.npm /home/node/.bash-cache /home/node/.bun/install/cache
+sudo mkdir -p /home/node/.claude /home/node/.codex /home/node/.agents /home/node/.bash-cache /home/node/.npm /home/node/.bun/install/cache
 
 echo "2.post-create - Setting permissions..."
-sudo chown -R node:node /home/node/.claude /home/node/.codex /home/node/.agents /home/node/.npm /home/node/.bash-cache /home/node/.bun ./node_modules
+sudo chown -R node:node . /home/node/.claude /home/node/.codex /home/node/.agents /home/node/.bash-cache /home/node/.npm /home/node/.bun
 
 echo "3.post-create - Installing the project dependencies..."
 npm install --no-fund --no-audit
