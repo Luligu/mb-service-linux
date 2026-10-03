@@ -1,3 +1,4 @@
 #!/usr/bin/env node
 /* v8 ignore file */
-import('../module.js');
+// oxlint-disable-next-line import/no-unassigned-import
+import '../module.js';
