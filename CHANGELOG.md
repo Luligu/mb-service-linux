@@ -23,7 +23,28 @@ If you like this project and find it useful, please consider giving it a star on
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="120"></a>
 
-## [2.0.6] - Dev branch
+## [2.0.6] - 2026-10-18
+
+### Added
+
+- [bun]: Add [`bunfig.toml`](bunfig.toml) v.1.0.3 for the Bun-native test runner.
+- [vscode]: Add the `Install and Validate`, `System info`, `Bundle`, `Minify`, `Obfuscate`, `Pack`, `Pack Minify`, `Pack Obfuscate`, `Docker: Ubuntu Install`, `Docker: Debian Install` and `Docker: Alpine Install` tasks to `.vscode/tasks.json`.
+
+### Changed
+
+- [lint]: Update `.oxlintrc.json` and `.oxfmtrc.json` to v.1.2.0 and drop `--disable-nested-config` from the `lint` and `lint:fix` scripts.
+- [vitest]: Update `vitest.config.ts` to v.2.0.9.
+- [tsconfig]: Use only the `bun` types in `tsconfig.json`, `tsconfig.build.json` and `tsconfig.build.production.json`.
+- [scripts]: Update `scripts/prepublish-clean.mjs` to v.2.1.0 (also removes `bun.lock`) and `scripts/deep-clean.mjs` to v.2.1.0 (also removes `tmp`).
+- [package]: Run `npm-check-updates@latest` with npx in the `checkDependencies` and `updateDependencies` scripts.
+- [package]: Upgrade package.
+- [package]: Bump `@types/bun` to v.1.4.3.
+- [package]: Bump `@types/node` to v.26.6.5.
+- [package]: Bump `oxfmt` to v.0.73.0.
+- [package]: Bump `oxlint` to v.1.88.0.
+- [package]: Bump `oxlint-tsgolint` to v.7.0.2004.
+- [package]: Bump `vitest` to v.5.0.5.
+- [package]: Bump `@vitest/coverage-v8` to v.5.0.5.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
