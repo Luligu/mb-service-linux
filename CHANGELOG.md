@@ -25,6 +25,13 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [2.0.7] - Dev branch
 
+### Changed
+
+- [vscode]: Update `.vscode/settings.json` to v.1.0.16.
+- [package]: Upgrade package.
+- [package]: Bump `oxfmt` to v.0.74.0.
+- [package]: Bump `oxlint` to v.1.89.0.
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [2.0.6] - 2026-10-18
