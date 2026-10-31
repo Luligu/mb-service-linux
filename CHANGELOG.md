@@ -25,6 +25,21 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [2.0.8] - Dev branch
 
+### Changed
+
+- [package]: Bump `@types/node` to v.26.6.6.
+- [package]: Bump `oxfmt` to v.0.75.0.
+- [package]: Bump `oxlint` to v.1.90.0.
+- [agents]: Update `.github/commit-message-instructions.md` to v.1.0.1.
+- [vscode]: Update `.vscode/settings.json` to v.1.0.17.
+- [vscode]: Update `.vscode/tasks.json`.
+- [agents]: Update `AGENTS.md` to v.1.0.8.
+- [config]: Update `CODE_OF_CONDUCT.md` to v.1.0.0.
+- [config]: Update `CONTRIBUTING.md` to v.1.0.1.
+- [scripts]: Update `scripts/downloads.mjs`.
+- [config]: Add `SHARED-AGENTS.md`.
+- [config]: Add `TOOLCHAIN.md` v.1.0.1.
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [2.0.7] - 2026-10-23
