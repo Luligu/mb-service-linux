@@ -65,7 +65,6 @@
     "jest": false,
     "vitest": true,
     "buntest": false,
-    "native": true,
     "git": false,
     "version": false,
     "publish": false,
