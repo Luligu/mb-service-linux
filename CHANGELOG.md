@@ -25,14 +25,17 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [2.0.9] - Dev branch
 
-### Fixed
-
-- [service]: Print the help screen when no command is given, even when no service file exists.
-- [service]: Report an unknown command instead of silently ignoring it.
-
 ### Changed
 
-- [service]: Only service-managed commands now require an existing Matterbridge service file; package management commands no longer do.
+- [package]: Bump `vitest` and `@vitest/coverage-v8` to v.5.1.0.
+- [package]: Bump `oxfmt` to v.0.76.0.
+- [package]: Bump `oxlint` to v.1.91.0.
+- [package]: Remove the `automator.native` flag.
+- [agents]: Update `AGENTS.md` to v.1.0.10: add a Context And Reading section and Bionic / LM Studio support.
+- [agents]: Update `.agents/README.md` to v.1.0.5 and `SHARED-AGENTS.md`: document Bionic / LM Studio.
+- [agents]: Update the `verify-agent-context` skill to v.1.0.6: report the global instructions and settings, and group skills by source.
+- [agents]: Move `git commit` and `git push` from deny to ask in the Claude Code, Codex and Antigravity settings.
+- [config]: Normalize the version headers of `.gitignore`, `.oxfmtrc.json`, `.oxlintrc.json`, `bunfig.toml`, `vitest.config.ts` and the workflows.
 
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
