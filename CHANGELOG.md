@@ -25,6 +25,15 @@ If you like this project and find it useful, please consider giving it a star on
 
 ## [2.0.9] - Dev branch
 
+### Fixed
+
+- [service]: Print the help screen when no command is given, even when no service file exists.
+- [service]: Report an unknown command instead of silently ignoring it.
+
+### Changed
+
+- [service]: Only service-managed commands now require an existing Matterbridge service file; package management commands no longer do.
+
 <a href="https://www.buymeacoffee.com/luligugithub"><img src="https://matterbridge.io/assets/bmc-button.svg" alt="Buy me a coffee" width="80"></a>
 
 ## [2.0.8] - 2026-11-01
